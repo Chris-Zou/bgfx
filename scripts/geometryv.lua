@@ -83,6 +83,8 @@ project ("geometryv")
 			"comdlg32",
 			"gdi32",
 			"psapi",
+			"fcppDebug",
+			"glsl-optimizerDebug"
 		}
 
 	configuration { "winstore*" }
