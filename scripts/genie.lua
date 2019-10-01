@@ -163,6 +163,16 @@ function exampleProjectDefaults()
 		path.join(BGFX_DIR, "include"),
 		path.join(BGFX_DIR, "3rdparty"),
 		path.join(BGFX_DIR, "examples/common"),
+		path.join(BGFX_DIR, "3rdparty/fcpp"),
+		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
+		path.join(BGFX_DIR, "3rdparty/glslang/glslang/Public"),
+		path.join(BGFX_DIR, "3rdparty/glslang/glslang/Include"),
+		path.join(BGFX_DIR, "3rdparty/glslang"),
+		path.join(BGFX_DIR, "3rdparty/glsl-optimizer/include"),
+		path.join(BGFX_DIR, "3rdparty/glsl-optimizer/src/glsl"),
+		path.join(BGFX_DIR, "3rdparty/spirv-cross"),
+		path.join(BGFX_DIR, "3rdparty/spirv-tools/include"),
+		path.join(BGFX_DIR, "3rdparty/glsl-optimizer/include/c99")
 	}
 
 	flags {
@@ -229,6 +239,8 @@ function exampleProjectDefaults()
 		}
 		links { -- this is needed only for testing with GLES2/3 on Windows with VS2008
 			"DelayImp",
+			"fcppDebug",
+			"glsl-optimizerDebug"
 		}
 
 	configuration { "vs201*", "x32 or x64" }
@@ -495,6 +507,7 @@ or _OPTIONS["with-combined-examples"] then
 		, "39-assao"
 		, "40-svt"
 		, "41-tess"
+		, "42-tonemapping"
 		)
 
 	-- C99 source doesn't compile under WinRT settings

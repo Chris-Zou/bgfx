@@ -154,4 +154,25 @@ struct Args
 	uint16_t m_pciId;
 };
 
+namespace shaderc
+{
+	enum ShaderType
+	{
+		ST_VERTEX = 'v',   /// vertex
+		ST_FRAGMENT = 'f',   /// fragment
+		ST_COMPUTE = 'c',   /// compute
+	};
+
+	const bgfx::Memory* compileShader(
+		ShaderType type
+		, const char* filePath
+		, const char* defines = nullptr
+		, const char* varyingPath = nullptr
+		, const char* profile = nullptr
+	);
+
+	const bgfx::Memory* compileShader(int argc, const char* argv[]);
+}
+
+
 #endif // BGFX_UTILS_H_HEADER_GUARD

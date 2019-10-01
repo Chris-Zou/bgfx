@@ -25,7 +25,19 @@ project ("example-common")
 		path.join(BIMG_DIR, "include"),
 		path.join(BGFX_DIR, "include"),
 		path.join(BGFX_DIR, "3rdparty"),
+		path.join(BGFX_DIR, "3rdparty/fcpp"),
+		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
+		path.join(BGFX_DIR, "3rdparty/glslang/glslang/Public"),
+		path.join(BGFX_DIR, "3rdparty/glslang/glslang/Include"),
+		path.join(BGFX_DIR, "3rdparty/glslang"),
+		path.join(BGFX_DIR, "3rdparty/glsl-optimizer/include"),
+		path.join(BGFX_DIR, "3rdparty/glsl-optimizer/src/glsl"),
+		path.join(BGFX_DIR, "3rdparty/spirv-cross"),
+		path.join(BGFX_DIR, "3rdparty/spirv-tools/include"),
+		path.join(BGFX_DIR, "3rdparty/glsl-optimizer/include/c99")
 	}
+
+	implibdir "../../.build/win64_vs2017/bin"
 
 	files {
 		path.join(BGFX_DIR, "3rdparty/meshoptimizer/src/**.cpp"),
