@@ -14,7 +14,7 @@ void main()
 
 	vec3 Yxy = convertRGB2Yxy(rgb);
 
-	float whiteSqr = 0.0870;//u_tonemap.x;
+	float whiteSqr = u_tonemap.x;
 
 	Yxy.x /= (9.6 * lum + 0.00001);
 
