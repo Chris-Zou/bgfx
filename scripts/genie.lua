@@ -508,6 +508,10 @@ or _OPTIONS["with-combined-examples"] then
 		, "40-svt"
 		, "41-tess"
 		, "42-tonemapping"
+		, "43-pbr-ibl"
+		, "44-forward-shading"
+		, "45-deferred-shading"
+		, "46-shadow-mapping"
 		)
 
 	-- C99 source doesn't compile under WinRT settings
