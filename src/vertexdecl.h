@@ -33,7 +33,10 @@ namespace bgfx
 	int32_t write(bx::WriterI* _writer, const bgfx::VertexLayout& _layout, bx::Error* _err = NULL);
 
 	///
+#ifndef VERTEX_LAYTOU_READ
+#define VERTEX_LAYTOU_READ
 	int32_t read(bx::ReaderI* _reader, bgfx::VertexLayout& _layout, bx::Error* _err = NULL);
+#endif
 
 } // namespace bgfx
 

@@ -382,6 +382,10 @@ void Group::reset()
 
 namespace bgfx
 {
+#ifndef VERTEX_LAYTOU_READ
+#define VERTEX_LAYTOU_READ
+	int32_t read(bx::ReaderI* _reader, bgfx::VertexLayout& _layout, bx::Error* _err = NULL);
+#endif
 	typedef void(*UserErrorFn)(void*, const char*, va_list);
 	static UserErrorFn s_user_error_fn = nullptr;
 	static void* s_user_error_ptr = nullptr;

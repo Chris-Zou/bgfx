@@ -159,8 +159,8 @@ namespace
 
 		void compileShaders()
 		{
-			/*m_skyProgram = compileShader("../42-tonemapping/vs_tonemapping_skybox.sc", "../42-tonemapping/fs_tonemapping_skybox.sc", "../42-tonemapping/varying.def.sc");
-			m_meshProgram = compileShader("../42-tonemapping/vs_tonemapping_mesh.sc", "../42-tonemapping/fs_tonemapping_mesh.sc", "../42-tonemapping/varying.def.sc");*/
+			m_skyProgram = compileShader("../42-tonemapping/vs_tonemapping_skybox.sc", "../42-tonemapping/fs_tonemapping_skybox.sc", "../42-tonemapping/varying.def.sc");
+			m_meshProgram = compileShader("../42-tonemapping/vs_tonemapping_mesh.sc", "../42-tonemapping/fs_tonemapping_mesh.sc", "../42-tonemapping/varying.def.sc");
 
 			m_histogramProgram = compileComputeShader("../42-tonemapping/cs_lum_hist.sc");
 			m_avgProgram = compileComputeShader("../42-tonemapping/cs_lum_avg.sc");
@@ -283,7 +283,7 @@ namespace
 				if (!m_computeSupported)
 					return false;
 
-				if (!bgfx::isValid(m_fbh) || m_oldWidth != m_width || m_oldHeight != m_height || m_oldReset == m_reset)
+				if (!bgfx::isValid(m_fbh) || m_oldWidth != m_width || m_oldHeight != m_height || m_oldReset != m_reset)
 				{
 					m_oldWidth = m_width;
 					m_oldHeight = m_height;
@@ -391,9 +391,9 @@ namespace
 
 				const bgfx::Caps* caps = bgfx::getCaps();
 				float proj[16];
-				bx::mtxOrtho(proj, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 100.0f, 0.0f, caps->homogeneousDepth);
+				bx::mtxOrtho(proj, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 100.0f, 0.0f, caps->homogeneousDepth);
 
-				for (uint8_t i = 0; i < toneMapPass; ++i)
+				for (uint8_t i = 0; i <= toneMapPass; ++i)
 				{
 					bgfx::setViewTransform(i, nullptr, proj);
 				}
@@ -406,15 +406,15 @@ namespace
 
 				const bx::Vec3 tmp = bx::mul(eye, mtx);
 
-				float view[16];
-				bx::mtxLookAt(view, tmp, at);
-				bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100.0f, caps->homogeneousDepth);
-
 				bgfx::setTexture(0, s_texCube, m_envTexture);
 				bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
 				bgfx::setUniform(u_mtx, mtx);
 				screenSpaceQuad((float)m_width, (float)m_height, true);
 				bgfx::submit(hdrSkybox, m_skyProgram);
+
+				float view[16];
+				bx::mtxLookAt(view, tmp, at);
+				bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100.0f, caps->homogeneousDepth);
 
 				bgfx::setViewTransform(hdrMesh, view, proj);
 				bgfx::setTexture(0, s_texCube, m_envTexture);
@@ -449,12 +449,12 @@ namespace
 				bgfx::setUniform(u_histogramParams, avgParams);
 				bgfx::dispatch(averagingPass, m_avgProgram, 1, 1, 1);
 
-				float tonemap[4] = { bx::square(static_cast<float>(m_width)), 0.0f, m_threshold, m_time };
+				float tonemap[4] = { bx::square(m_white), 0.0f, m_threshold, m_time };
 				bgfx::setTexture(0, s_texColor, m_fbTextures[0]);
 				bgfx::setTexture(1, s_texAvgLum, m_lumAvgTarget, SAMPLER_POINT_CLAMP);
 				bgfx::setUniform(u_tonemap, tonemap);
 				bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
-				screenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+				screenSpaceQuad(float(m_width), float(m_height), true);
 				bgfx::submit(toneMapPass, m_tonemapPrograms[m_currentOperator]);
 
 				bgfx::frame();
