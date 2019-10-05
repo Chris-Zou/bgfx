@@ -23,6 +23,11 @@
 #include "imgui/imgui.h"
 #include <bx\rng.h>
 
+#include <array>
+#include <glm/matrix.hpp>
+#include <glm/matrix.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 namespace
 {
 	class ExamplePBR_IBL : public entry::AppI

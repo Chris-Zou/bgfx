@@ -21,7 +21,7 @@
 #include "camera.h"
 #include "common.h"
 #include "imgui/imgui.h"
-#include <bx\rng.h>
+#include <bx/rng.h>
 
 namespace
 {

@@ -224,6 +224,10 @@ vec4 toGammaAccurate(vec4 _rgba)
 	return vec4(toGammaAccurate(_rgba.xyz), _rgba.w);
 }
 
+float clampDot(vec3 v1, vec3 v2) {
+    return clamp(dot(v1, v2), 0.0, 1.0);
+}
+
 vec3 toReinhard(vec3 _rgb)
 {
 	return toGamma(_rgb/(_rgb+vec3_splat(1.0) ) );

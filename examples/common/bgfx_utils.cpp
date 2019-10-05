@@ -864,6 +864,7 @@ namespace shaderc
 		options.platform = "linux";
 #elif BX_PLATFORM_WINDOWS
 		options.platform = "windows";
+		options.debugInformation = true;
 #elif BX_PLATFORM_ANDROID
 		options.platform = "android";
 #elif BX_PLATFORM_EMSCRIPTEN
