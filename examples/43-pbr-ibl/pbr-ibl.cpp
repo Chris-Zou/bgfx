@@ -51,7 +51,7 @@ namespace
 
 			return bgfx::createProgram(vsh, fsh, true);
 		}
-
+		
 		bgfx::ProgramHandle compileComputeShader(const char* csCode)
 		{
 			if (csCode == nullptr)
