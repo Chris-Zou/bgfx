@@ -67,7 +67,7 @@ void main()
 	lightDir = lightDir / dist;
 
 	float attenuation = u_lightIntensity * karisFalloff(dist, u_lightRadius);
-	vec3 light = attenuation = u_lightColor * clampDot(normal, lightDir);
+	vec3 light = attenuation * u_lightColor * clampDot(normal, lightDir);
 
 	vec3 color = (diffuseColor(baseColor, metallic) + PI * specular(lightDir, viewDir, normal, baseColor, roughness, metallic)) *  light;
 
