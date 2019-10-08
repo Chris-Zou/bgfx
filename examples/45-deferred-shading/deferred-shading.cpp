@@ -211,10 +211,10 @@ namespace Deferred
 				return;
 			}
 
-			m_writeToRTProgram = Dolphin::compileGraphicsShader("", "", "");
-			m_lightStencilProgram = Dolphin::compileGraphicsShader("", "", "");
-			m_pointLightVolumeProgram = Dolphin::compileGraphicsShader("", "", "");
-			m_emissivePassProgram = Dolphin::compileGraphicsShader("", "", "");
+			m_writeToRTProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_deferred_pbr.sc", "../45-deferred-shading/fs_deferred_pbr.sc", "../45-deferred-shading/varying.def.sc");
+			m_lightStencilProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_light_stencil.sc", "../45-deferred-shading/fs_light_stencil.sc", "../45-deferred-shading/varying.def.sc");
+			m_pointLightVolumeProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_point_light_volume.sc", "../45-deferred-shading/fs_point_light_volume.sc", "../45-deferred-shading/varying.def.sc");
+			m_emissivePassProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_emissive_pass.sc", "../45-deferred-shading/fs_emissive_pass.sc", "../45-deferred-shading/varying.def.sc");
 
 			Deferred::init(m_pbrUniforms);
 			Deferred::init(m_deferredSceneUniforms);
