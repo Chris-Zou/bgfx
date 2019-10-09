@@ -512,6 +512,7 @@ or _OPTIONS["with-combined-examples"] then
 		, "44-forward-shading"
 		, "45-deferred-shading"
 		, "46-shadow-mapping"
+		, "47-AtmosphereScattering"
 		)
 
 	-- C99 source doesn't compile under WinRT settings
