@@ -21,7 +21,7 @@
 #include "camera.h"
 #include "common.h"
 #include "imgui/imgui.h"
-#include <bx\rng.h>
+#include <bx/rng.h>
 
 namespace
 {
@@ -64,6 +64,7 @@ namespace
 
 		void compileShaders()
 		{
+			m_atmophereScattering = compileShader("../47-AtmosphereScattering/vs_atmosphere.sc", "../47-AtmosphereScattering/fs_atmosphere.sc", "../47-AtmosphereScattering/varying.def.sc");
 		}
 
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
@@ -85,6 +86,27 @@ namespace
 
 			// Enable m_debug text.
 			bgfx::setDebug(m_debug);
+
+			m_planetRadius = bgfx::createUniform("PlanetRadius", bgfx::UniformType::Vec4);
+			m_atmosphereHeight = bgfx::createUniform("AtmosphereHeight", bgfx::UniformType::Vec4);
+			m_sunIntensity = bgfx::createUniform("SunIntensity", bgfx::UniformType::Vec4);
+			m_distanceScale = bgfx::createUniform("DistanceScale", bgfx::UniformType::Vec4);
+			m_densityScaleHeight = bgfx::createUniform("DensityScaleHeight", bgfx::UniformType::Vec4);
+
+			m_scatteringR = bgfx::createUniform("ScatteringR", bgfx::UniformType::Vec4);
+			m_scatteringM = bgfx::createUniform("ScatteringM", bgfx::UniformType::Vec4);
+			m_extinctionR = bgfx::createUniform("ExtinctionR", bgfx::UniformType::Vec4);
+			m_extinctionM = bgfx::createUniform("ExtinctionM", bgfx::UniformType::Vec4);
+
+			m_mieG = bgfx::createUniform("MieG", bgfx::UniformType::Vec4);
+			m_incomingLight = bgfx::createUniform("IncomingLight", bgfx::UniformType::Vec4);
+
+			if (m_bIsFirstFrame)
+			{
+				compileShaders();
+			}
+
+			m_bIsFirstFrame = false;
 		}
 
 		virtual int shutdown() override
@@ -102,6 +124,24 @@ namespace
 		uint32_t m_height;
 		uint32_t m_debug;
 		uint32_t m_reset;
+
+		bool m_bIsFirstFrame = true;
+
+		bgfx::ProgramHandle m_atmophereScattering;
+
+		bgfx::UniformHandle m_planetRadius;
+		bgfx::UniformHandle m_atmosphereHeight;
+		bgfx::UniformHandle m_sunIntensity;
+		bgfx::UniformHandle m_distanceScale;
+		bgfx::UniformHandle m_densityScaleHeight;
+
+		bgfx::UniformHandle m_scatteringR;
+		bgfx::UniformHandle m_scatteringM;
+		bgfx::UniformHandle m_extinctionR;
+		bgfx::UniformHandle m_extinctionM;
+
+		bgfx::UniformHandle m_mieG;
+		bgfx::UniformHandle m_incomingLight;
 	};
 
 } // namespace
