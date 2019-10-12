@@ -23,6 +23,10 @@
 #include "imgui/imgui.h"
 #include <bx/rng.h>
 
+#include <glm/glm.hpp>
+#include <glm/matrix.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 namespace
 {
 	class ExampleShadowMapping : public entry::AppI
@@ -31,6 +35,15 @@ namespace
 		ExampleShadowMapping(const char* _name, const char* _description, const char* _url)
 			: entry::AppI(_name, _description, _url)
 		{
+			m_fPlanetRadius = 6371000.0f;
+			m_fAtmosphereHeight = 80000.0f;
+			m_fSunIntensity = 1.0f;
+			m_fDistanceScale = 1.0f;
+			m_fDensityHeight = 1.0f;
+
+			m_vDensityScale = bx::Vec3(7994.0f, 1200.0f, 0);
+			m_vRayleighSct = bx::Vec3(5.8f * 0.000001f, 13.5f * 0.000001f, 33.1f * 0.000001f);
+			m_vMieSct = bx::Vec3(2.0f * 0.000001f, 2.0f * 0.000001f, 2.0f * 0.000001f);
 		}
 
 		bgfx::ProgramHandle compileShader(const char* vsCode, const char* fsCode, const char* defCode)
@@ -111,6 +124,20 @@ namespace
 
 		virtual int shutdown() override
 		{
+			bgfx::destroy(m_planetRadius);
+			bgfx::destroy(m_atmosphereHeight);
+			bgfx::destroy(m_sunIntensity);
+			bgfx::destroy(m_distanceScale);
+			bgfx::destroy(m_densityScaleHeight);
+
+			bgfx::destroy(m_scatteringR);
+			bgfx::destroy(m_scatteringM);
+			bgfx::destroy(m_extinctionR);
+			bgfx::destroy(m_extinctionM);
+
+			bgfx::destroy(m_mieG);
+			bgfx::destroy(m_incomingLight);
+
 			return 0;
 		}
 
@@ -129,6 +156,7 @@ namespace
 
 		bgfx::ProgramHandle m_atmophereScattering;
 
+#pragma region uniforms
 		bgfx::UniformHandle m_planetRadius;
 		bgfx::UniformHandle m_atmosphereHeight;
 		bgfx::UniformHandle m_sunIntensity;
@@ -142,6 +170,19 @@ namespace
 
 		bgfx::UniformHandle m_mieG;
 		bgfx::UniformHandle m_incomingLight;
+#pragma endregion
+
+#pragma region datas
+		float m_fPlanetRadius;
+		float m_fAtmosphereHeight;
+		float m_fSunIntensity;
+		float m_fDistanceScale;
+		float m_fDensityHeight;
+
+		bx::Vec3 m_vDensityScale;
+		bx::Vec3 m_vRayleighSct;
+		bx::Vec3 m_vMieSct;
+#pragma endregion
 	};
 
 } // namespace

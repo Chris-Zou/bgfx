@@ -199,7 +199,6 @@ void main()
 	}
 
 	vec4 extinction;
-
 	vec4 inscattering = IntegrateInscattering(rayStart, rayDir, rayLength, planetCenter, DistanceScale, LightDir, 16, extinction);
 
 	gl_FragColor = inscattering;
