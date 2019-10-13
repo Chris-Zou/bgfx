@@ -29,6 +29,100 @@
 
 namespace
 {
+	struct ScreenSpaceQuadVertex
+	{
+		float m_x;
+		float m_y;
+		float m_z;
+		uint32_t m_rgba;
+		float m_u;
+		float m_v;
+
+		static void init()
+		{
+			if (isInitialized) {
+				return;
+			}
+
+			ms_layout
+				.begin()
+				.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+				.add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
+				.add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+				.end();
+			isInitialized = true;
+		}
+
+		static bool isInitialized;
+		static bgfx::VertexLayout ms_layout;
+	};
+
+	bool ScreenSpaceQuadVertex::isInitialized = false;
+	bgfx::VertexLayout ScreenSpaceQuadVertex::ms_layout;
+
+	static void setScreenSpaceQuad(
+		const float _textureWidth,
+		const float _textureHeight,
+		const bool _originBottomLeft = false,
+		const float _width = 1.0f,
+		const float _height = 1.0f)
+	{
+		if (3 == bgfx::getAvailTransientVertexBuffer(3, ScreenSpaceQuadVertex::ms_layout))
+		{
+
+			bgfx::TransientVertexBuffer vb;
+			bgfx::allocTransientVertexBuffer(&vb, 3, ScreenSpaceQuadVertex::ms_layout);
+			ScreenSpaceQuadVertex* vertex = (ScreenSpaceQuadVertex*)vb.data;
+
+			const float zz = 0.0f;
+
+			const float minx = -_width;
+			const float maxx = _width;
+			const float miny = 0.0f;
+			const float maxy = _height * 2.0f;
+
+			const float texelHalfW = 0.0f / _textureWidth;
+			const float texelHalfH = 0.0f / _textureHeight;
+			const float minu = -1.0f + texelHalfW;
+			const float maxu = 1.0f + texelHalfW;
+
+			float minv = texelHalfH;
+			float maxv = 2.0f + texelHalfH;
+
+			if (_originBottomLeft) {
+				float temp = minv;
+				minv = maxv;
+				maxv = temp;
+
+				minv -= 1.0f;
+				maxv -= 1.0f;
+			}
+
+			vertex[0].m_x = minx;
+			vertex[0].m_y = miny;
+			vertex[0].m_z = zz;
+			vertex[0].m_rgba = 0xffffffff;
+			vertex[0].m_u = minu;
+			vertex[0].m_v = minv;
+
+			vertex[1].m_x = maxx;
+			vertex[1].m_y = miny;
+			vertex[1].m_z = zz;
+			vertex[1].m_rgba = 0xffffffff;
+			vertex[1].m_u = maxu;
+			vertex[1].m_v = minv;
+
+			vertex[2].m_x = maxx;
+			vertex[2].m_y = maxy;
+			vertex[2].m_z = zz;
+			vertex[2].m_rgba = 0xffffffff;
+			vertex[2].m_u = maxu;
+			vertex[2].m_v = maxv;
+
+			bgfx::setVertexBuffer(0, &vb);
+		}
+	}
+
 	class ExampleShadowMapping : public entry::AppI
 	{
 	public:
@@ -44,8 +138,15 @@ namespace
 			m_vDensityScale = bx::Vec3(7994.0f, 1200.0f, 0);
 			m_vRayleighSct = bx::Vec3(5.8f * 0.000001f, 13.5f * 0.000001f, 33.1f * 0.000001f);
 			m_vMieSct = bx::Vec3(2.0f * 0.000001f, 2.0f * 0.000001f, 2.0f * 0.000001f);
-		}
 
+			m_fRayleighScatterCoef = 1.0f;
+			m_fRayleighExtinctionCoef = 1.0f;
+			m_fMieScatterCoef = 1.0f;
+			m_fMieExtinctionCoef = 1.0f;
+
+			m_fMieG = 0.76f;
+		}
+#pragma region ShaderCompiler
 		bgfx::ProgramHandle compileShader(const char* vsCode, const char* fsCode, const char* defCode)
 		{
 			if (vsCode == nullptr || fsCode == nullptr || defCode == nullptr)
@@ -79,6 +180,7 @@ namespace
 		{
 			m_atmophereScattering = compileShader("../47-AtmosphereScattering/vs_atmosphere.sc", "../47-AtmosphereScattering/fs_atmosphere.sc", "../47-AtmosphereScattering/varying.def.sc");
 		}
+#pragma endregion
 
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
 		{
@@ -114,14 +216,49 @@ namespace
 			m_mieG = bgfx::createUniform("MieG", bgfx::UniformType::Vec4);
 			m_incomingLight = bgfx::createUniform("IncomingLight", bgfx::UniformType::Vec4);
 
+			m_cameraPos = bgfx::createUniform("CameraPos", bgfx::UniformType::Vec4);
+			m_lightDir = bgfx::createUniform("LightDir", bgfx::UniformType::Vec4);
+
 			if (m_bIsFirstFrame)
 			{
 				compileShaders();
 			}
 
+			m_caps = bgfx::getCaps();
+
+			imguiCreate();
+
+			cameraCreate();
+			cameraSetPosition({ 0.0f, 2.0f, 0.0f });
+			cameraSetHorizontalAngle(bx::kPi / 2.0);
+
+			ScreenSpaceQuadVertex::init();
+
 			m_bIsFirstFrame = false;
 		}
 
+		void setConstantUniforms()
+		{
+			bgfx::setUniform(m_planetRadius, &m_fPlanetRadius);
+			bgfx::setUniform(m_atmosphereHeight, &m_fAtmosphereHeight);
+			bgfx::setUniform(m_sunIntensity, &m_fSunIntensity);
+			bgfx::setUniform(m_distanceScale, &m_fDistanceScale);
+			bgfx::setUniform(m_densityScaleHeight, &m_fDensityHeight);
+
+			bgfx::setUniform(m_scatteringR, &m_vRayleighSct);
+			bgfx::setUniform(m_scatteringM, &m_vMieSct);
+			bgfx::setUniform(m_extinctionR, &m_vExtinctionR);
+			bgfx::setUniform(m_extinctionM, &m_vExtinctionM);
+
+			bgfx::setUniform(m_mieG, &m_fMieG);
+		}
+
+		void setUniforms()
+		{
+			bgfx::setUniform(m_incomingLight, &m_vIncomingLight);
+			bgfx::setUniform(m_lightDir, &m_vLightDir);
+		}
+		
 		virtual int shutdown() override
 		{
 			bgfx::destroy(m_planetRadius);
@@ -138,19 +275,75 @@ namespace
 			bgfx::destroy(m_mieG);
 			bgfx::destroy(m_incomingLight);
 
+			imguiDestroy();
+
 			return 0;
 		}
 
 		bool update() override
 		{
-			return false;
+			if (entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState)) {
+				return false;
+			}
+
+			/*imguiBeginFrame(m_mouseState.m_mx
+				, m_mouseState.m_my
+				, (m_mouseState.m_buttons[entry::MouseButton::Left] ? IMGUI_MBUT_LEFT : 0)
+				| (m_mouseState.m_buttons[entry::MouseButton::Right] ? IMGUI_MBUT_RIGHT : 0)
+				| (m_mouseState.m_buttons[entry::MouseButton::Middle] ? IMGUI_MBUT_MIDDLE : 0)
+				, m_mouseState.m_mz
+				, uint16_t(m_width)
+				, uint16_t(m_height)
+			);
+
+			showExampleDialog(this);
+
+			ImGui::SetNextWindowPos(
+				ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f)
+				, ImGuiCond_FirstUseEver
+			);
+			ImGui::SetNextWindowSize(
+				ImVec2(m_width / 5.0f, m_height / 3.0f)
+				, ImGuiCond_FirstUseEver
+			);
+			ImGui::Begin("Settings"
+				, NULL
+				, 0
+			);
+
+			ImGui::End();
+
+			imguiEndFrame();*/
+
+			float proj[16];
+			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+
+			// Update camera
+			float view[16];
+			cameraGetViewMtx(view);
+			bgfx::setViewTransform(0, view, proj);
+
+			bx::Vec3 cameraPos = cameraGetPosition();
+			bgfx::setUniform(m_cameraPos, &cameraPos);
+
+			setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+
+			bgfx::submit(0, m_atmophereScattering);
+
+			bgfx::frame();
+
+			return true;
 		}
 
 	public:
+		entry::MouseState m_mouseState;
+
 		uint32_t m_width;
 		uint32_t m_height;
 		uint32_t m_debug;
 		uint32_t m_reset;
+
+		const bgfx::Caps *m_caps;
 
 		bool m_bIsFirstFrame = true;
 
@@ -170,6 +363,8 @@ namespace
 
 		bgfx::UniformHandle m_mieG;
 		bgfx::UniformHandle m_incomingLight;
+		bgfx::UniformHandle m_lightDir;
+		bgfx::UniformHandle m_cameraPos;
 #pragma endregion
 
 #pragma region datas
@@ -179,9 +374,22 @@ namespace
 		float m_fDistanceScale;
 		float m_fDensityHeight;
 
+		float m_fRayleighScatterCoef;
+		float m_fRayleighExtinctionCoef;
+		float m_fMieScatterCoef;
+		float m_fMieExtinctionCoef;
+		float m_fMieG;
+
 		bx::Vec3 m_vDensityScale;
 		bx::Vec3 m_vRayleighSct;
 		bx::Vec3 m_vMieSct;
+		bx::Vec3 m_vScatteringR;
+		bx::Vec3 m_vScatteringM;
+		bx::Vec3 m_vExtinctionR;
+		bx::Vec3 m_vExtinctionM;
+
+		bx::Vec3 m_vIncomingLight;
+		bx::Vec3 m_vLightDir;
 #pragma endregion
 	};
 
