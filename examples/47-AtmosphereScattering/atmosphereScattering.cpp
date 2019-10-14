@@ -229,7 +229,7 @@ namespace
 			imguiCreate();
 
 			cameraCreate();
-			cameraSetPosition({ 0.0f, 2.0f, 0.0f });
+			cameraSetPosition({ 0.0f, 5.0f, 0.0f });
 			cameraSetHorizontalAngle(bx::kPi / 2.0);
 
 			ScreenSpaceQuadVertex::init();
@@ -277,6 +277,8 @@ namespace
 
 			imguiDestroy();
 
+			bgfx::shutdown();
+
 			return 0;
 		}
 
@@ -286,7 +288,7 @@ namespace
 				return false;
 			}
 
-			/*imguiBeginFrame(m_mouseState.m_mx
+			imguiBeginFrame(m_mouseState.m_mx
 				, m_mouseState.m_my
 				, (m_mouseState.m_buttons[entry::MouseButton::Left] ? IMGUI_MBUT_LEFT : 0)
 				| (m_mouseState.m_buttons[entry::MouseButton::Right] ? IMGUI_MBUT_RIGHT : 0)
@@ -313,18 +315,24 @@ namespace
 
 			ImGui::End();
 
-			imguiEndFrame();*/
+			imguiEndFrame();
+
+			bgfx::touch(0);
 
 			float proj[16];
-			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100000000.0f, bgfx::getCaps()->homogeneousDepth);
+
+			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
 			// Update camera
-			float view[16];
-			cameraGetViewMtx(view);
-			bgfx::setViewTransform(0, view, proj);
 
 			bx::Vec3 cameraPos = cameraGetPosition();
 			bgfx::setUniform(m_cameraPos, &cameraPos);
+
+			uint64_t emissivePassState = 0
+				| BGFX_STATE_WRITE_RGB
+				| BGFX_STATE_BLEND_ADD;
+			bgfx::setState(emissivePassState);
 
 			setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
 
