@@ -300,7 +300,6 @@ namespace Dolphin
 
 		void init(const bgfx::Caps* caps)
 		{
-			const std::string toneMappingProgramName = "";
 			histogramProgram = compileComputeShader("../42-tonemapping/cs_lum_hist.sc");
 			averagingProgram = compileComputeShader("../42-tonemapping/cs_lum_avg.sc");
 

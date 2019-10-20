@@ -27,7 +27,7 @@
 #include <glm/matrix.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-namespace
+namespace Atmosphere
 {
 	struct ScreenSpaceQuadVertex
 	{
@@ -53,6 +53,13 @@ namespace
 			isInitialized = true;
 		}
 
+		void setPosition(float* pos)
+		{
+			m_x = pos[0];
+			m_y = pos[1];
+			m_z = pos[2];
+		}
+
 		static bool isInitialized;
 		static bgfx::VertexLayout ms_layout;
 	};
@@ -60,7 +67,7 @@ namespace
 	bool ScreenSpaceQuadVertex::isInitialized = false;
 	bgfx::VertexLayout ScreenSpaceQuadVertex::ms_layout;
 
-	static void setScreenSpaceQuad(
+	/*static void setScreenSpaceQuad(
 		const float _textureWidth,
 		const float _textureHeight,
 		const bool _originBottomLeft = false,
@@ -74,7 +81,7 @@ namespace
 			bgfx::allocTransientVertexBuffer(&vb, 3, ScreenSpaceQuadVertex::ms_layout);
 			ScreenSpaceQuadVertex* vertex = (ScreenSpaceQuadVertex*)vb.data;
 
-			const float zz = 0.0f;
+			const float zz = 2.0f;
 
 			const float minx = -_width;
 			const float maxx = _width;
@@ -118,6 +125,59 @@ namespace
 			vertex[2].m_rgba = 0xffffffff;
 			vertex[2].m_u = maxu;
 			vertex[2].m_v = maxv;
+
+			bgfx::setVertexBuffer(0, &vb);
+		}
+	}*/
+
+	static void setFarPlaneScreenSpace(const float* invProj)
+	{
+		float TL[4] = {-1.0f, 1.0f, 1.0f, 1.0f};
+		float TR[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+		float BL[4] = {-1.0f, -1.0f, 1.0f, 1.0f};
+		float BR[4] = {1.0f, -1.0f, 1.0f, 1.0f};
+
+		float iTL[4], iTR[4], iBL[4], iBR[4];
+
+		bx::vec4MulMtx(iTL, TL, invProj);
+		bx::vec4MulMtx(iTR, TR, invProj);
+		bx::vec4MulMtx(iBL, BL, invProj);
+		bx::vec4MulMtx(iBR, BR, invProj);
+
+		if (3 == bgfx::getAvailTransientVertexBuffer(3, ScreenSpaceQuadVertex::ms_layout))
+		{
+			bgfx::TransientVertexBuffer vb;
+			bgfx::allocTransientVertexBuffer(&vb, 6, ScreenSpaceQuadVertex::ms_layout);
+			ScreenSpaceQuadVertex* vertex = (ScreenSpaceQuadVertex*)vb.data;
+			vertex[0].setPosition(iTL);
+			vertex[0].m_u = 0.0f;
+			vertex[0].m_v = 0.0f;
+			vertex[0].m_rgba = 0xffffffff;
+
+			vertex[1].setPosition(iBL);
+			vertex[1].m_u = 0.0f;
+			vertex[1].m_v = 1.0f;
+			vertex[1].m_rgba = 0xffffffff;
+
+			vertex[2].setPosition(iBR);
+			vertex[2].m_u = 1.0f;
+			vertex[2].m_v = 1.0f;
+			vertex[2].m_rgba = 0xffffffff;
+
+			vertex[3].setPosition(iBR);
+			vertex[3].m_u = 1.0f;
+			vertex[3].m_v = 1.0f;
+			vertex[3].m_rgba = 0xffffffff;
+
+			vertex[4].setPosition(iTR);
+			vertex[4].m_u = 1.0f;
+			vertex[4].m_v = 0.0f;
+			vertex[4].m_rgba = 0xffffffff;
+
+			vertex[5].setPosition(iTL);
+			vertex[5].m_u = 0.0f;
+			vertex[5].m_v = 0.0f;
+			vertex[5].m_rgba = 0xffffffff;
 
 			bgfx::setVertexBuffer(0, &vb);
 		}
@@ -229,10 +289,36 @@ namespace
 			imguiCreate();
 
 			cameraCreate();
-			cameraSetPosition({ 0.0f, 5.0f, 0.0f });
+			cameraSetPosition({ 0.0f, 0.0f, 0.0f });
 			cameraSetHorizontalAngle(bx::kPi / 2.0);
 
 			ScreenSpaceQuadVertex::init();
+
+			if (bgfx::isValid(m_frameBuffer))
+				bgfx::destroy(m_frameBuffer);
+
+			uint32_t msaa = (m_reset & BGFX_RESET_MSAA_MASK) >> BGFX_RESET_MSAA_SHIFT;
+
+			m_fbTexture[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT) | BGFX_SAMPLER_UVW_CLAMP | BGFX_SAMPLER_POINT);
+
+			const uint64_t textureFlags = BGFX_TEXTURE_RT_WRITE_ONLY | (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT);
+
+			bgfx::TextureFormat::Enum depthFormat;
+			if (bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::D24S8, textureFlags))
+			{
+				depthFormat = bgfx::TextureFormat::D24S8;
+			}
+			else
+			{
+				depthFormat = bgfx::TextureFormat::D32;
+			}
+
+			m_fbTexture[1] = bgfx::createTexture2D(
+				uint16_t(m_width), uint16_t(m_height), false, 1, depthFormat, textureFlags);
+
+			bgfx::setName(m_fbTexture[0], "BaseColor");
+
+			m_frameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_fbTexture), m_fbTexture, true);
 
 			m_bIsFirstFrame = false;
 		}
@@ -274,6 +360,9 @@ namespace
 
 			bgfx::destroy(m_mieG);
 			bgfx::destroy(m_incomingLight);
+
+			if (bgfx::isValid(m_frameBuffer))
+				bgfx::destroy(m_frameBuffer);
 
 			imguiDestroy();
 
@@ -319,22 +408,38 @@ namespace
 
 			bgfx::touch(0);
 
-			float proj[16];
-			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100000000.0f, bgfx::getCaps()->homogeneousDepth);
+			float proj[16], invProj[16];
+			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100000.0f, m_caps->homogeneousDepth);
+			bx::mtxInverse(invProj, proj);
 
 			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
-			// Update camera
+			float orthoProjection[16];
+			bx::mtxOrtho(orthoProjection, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 2.0f, 0.0f, m_caps->homogeneousDepth);
+			bgfx::setViewTransform(0, nullptr, orthoProjection);
+
+			
 
 			bx::Vec3 cameraPos = cameraGetPosition();
 			bgfx::setUniform(m_cameraPos, &cameraPos);
 
-			uint64_t emissivePassState = 0
-				| BGFX_STATE_WRITE_RGB
-				| BGFX_STATE_BLEND_ADD;
-			bgfx::setState(emissivePassState);
+			bgfx::setViewName(0, "AtmosphereScattering");
 
-			setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+			
+			//bgfx::setViewFrameBuffer(0, m_frameBuffer);
+
+			uint64_t stateOpaque = 0
+				| BGFX_STATE_WRITE_RGB
+				| BGFX_STATE_WRITE_A
+				| BGFX_STATE_WRITE_Z
+				| BGFX_STATE_DEPTH_TEST_ALWAYS
+				| BGFX_STATE_CULL_CCW;
+			bgfx::setState(stateOpaque);
+
+			setFarPlaneScreenSpace(invProj);
+
+			//setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+			//bgfx::setViewFrameBuffer(1, BGFX_INVALID_HANDLE);
 
 			bgfx::submit(0, m_atmophereScattering);
 
@@ -356,6 +461,10 @@ namespace
 		bool m_bIsFirstFrame = true;
 
 		bgfx::ProgramHandle m_atmophereScattering;
+
+		bgfx::FrameBufferHandle m_frameBuffer = BGFX_INVALID_HANDLE;
+
+		bgfx::TextureHandle m_fbTexture[2];
 
 #pragma region uniforms
 		bgfx::UniformHandle m_planetRadius;
@@ -404,9 +513,9 @@ namespace
 } // namespace
 
 ENTRY_IMPLEMENT_MAIN(
-	ExampleShadowMapping
-	, "43-PBR_IBL"
-	, "PBR_IBL."
+	Atmosphere::ExampleShadowMapping
+	, "47-AtmosphereScattering"
+	, "AtmosphereScattering."
 	, "https://bkaradzic.github.io/bgfx/examples.html#tess"
 );
 /*

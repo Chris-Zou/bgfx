@@ -3,14 +3,6 @@
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
- /*
-  * Reference(s):
-  *
-  * - Adaptive GPU Tessellation with Compute Shaders by Jad Khoury, Jonathan Dupuy, and Christophe Riccio
-  *   http://onrendering.com/data/papers/isubd/isubd.pdf
-  *   https://github.com/jdupuy/opengl-framework/tree/master/demo-isubd-terrain#implicit-subdivision-on-the-gpu
-  */
-
 #include <bx/allocator.h>
 #include <bx/debug.h>
 #include <bx/file.h>
@@ -21,7 +13,7 @@
 #include "camera.h"
 #include "common.h"
 #include "imgui/imgui.h"
-#include <bx\rng.h>
+#include <bx/rng.h>
 
 #include <array>
 #include <glm/matrix.hpp>
@@ -30,6 +22,84 @@
 
 namespace
 {
+	bgfx::ProgramHandle compileShader(const char* vsCode, const char* fsCode, const char* defCode)
+	{
+		if (vsCode == nullptr || fsCode == nullptr || defCode == nullptr)
+			return BGFX_INVALID_HANDLE;
+
+		const bgfx::Memory* memVsh = shaderc::compileShader(shaderc::ST_VERTEX, vsCode, "", defCode);
+		bgfx::ShaderHandle vsh = bgfx::createShader(memVsh);
+
+		const bgfx::Memory* memFsh = shaderc::compileShader(shaderc::ST_FRAGMENT, fsCode, "", defCode);
+		bgfx::ShaderHandle fsh = bgfx::createShader(memFsh);
+
+		return bgfx::createProgram(vsh, fsh, true);
+	}
+
+	bgfx::ProgramHandle compileComputeShader(const char* csCode)
+	{
+		if (csCode == nullptr)
+			return BGFX_INVALID_HANDLE;
+
+		const bgfx::Memory* memCs = shaderc::compileShader(shaderc::ST_COMPUTE, csCode);
+		if (memCs != nullptr)
+		{
+			bgfx::ShaderHandle cSh = bgfx::createShader(memCs);
+			return bgfx::createProgram(cSh, true);
+		}
+		else
+			return BGFX_INVALID_HANDLE;
+	}
+
+	static float s_texelHalf = 0.0f;
+
+	class BrdfLutCreator
+	{
+	public:
+		void init()
+		{
+			const std::string brdfLutShaderName = "cs_brdf_lut.cs";
+			m_brdfProgram = compileComputeShader(brdfLutShaderName.c_str());
+
+			uint64_t lutFlags = BGFX_TEXTURE_COMPUTE_WRITE | BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP;
+			m_brdfLut = bgfx::createTexture2D(m_width, m_width, false, 1, bgfx::TextureFormat::RG16F, lutFlags);
+			bgfx::setName(m_brdfLut, "Smith BRDF LUT");
+		}
+
+		bgfx::TextureHandle getLut()
+		{
+			return m_brdfLut;
+		}
+
+		void renderLUT(bgfx::ViewId view)
+		{
+			const uint16_t threadCount = 16u;
+			bgfx::setViewName(view, "BRDF LUT creation pass");
+
+			bgfx::setImage(0, m_brdfLut, 0, bgfx::Access::Write, bgfx::TextureFormat::RG16F);
+			bgfx::dispatch(view, m_brdfProgram, m_width / threadCount, m_width / threadCount, 1);
+
+			m_rendered = true;
+		}
+
+		void destroy()
+		{
+			bgfx::destroy(m_brdfProgram);
+			if (m_destroyTextures)
+			{
+				bgfx::destroy(m_brdfLut);
+			}
+		}
+
+	private:
+		uint16_t m_width = 128u;
+		bgfx::TextureHandle m_brdfLut;
+		bgfx::ProgramHandle m_brdfProgram = BGFX_INVALID_HANDLE;
+
+		bool m_rendered = false;
+		bool m_destroyTextures = true;
+	};
+
 	class ExamplePBR_IBL : public entry::AppI
 	{
 	public:
@@ -38,38 +108,7 @@ namespace
 		{
 		}
 
-		bgfx::ProgramHandle compileShader(const char* vsCode, const char* fsCode, const char* defCode)
-		{
-			if (vsCode == nullptr || fsCode == nullptr || defCode == nullptr)
-				return BGFX_INVALID_HANDLE;
-
-			const bgfx::Memory* memVsh = shaderc::compileShader(shaderc::ST_VERTEX, vsCode, "", defCode);
-			bgfx::ShaderHandle vsh = bgfx::createShader(memVsh);
-
-			const bgfx::Memory* memFsh = shaderc::compileShader(shaderc::ST_FRAGMENT, fsCode, "", defCode);
-			bgfx::ShaderHandle fsh = bgfx::createShader(memFsh);
-
-			return bgfx::createProgram(vsh, fsh, true);
-		}
 		
-		bgfx::ProgramHandle compileComputeShader(const char* csCode)
-		{
-			if (csCode == nullptr)
-				return BGFX_INVALID_HANDLE;
-
-			const bgfx::Memory* memCs = shaderc::compileShader(shaderc::ST_COMPUTE, csCode);
-			if (memCs != nullptr)
-			{
-				bgfx::ShaderHandle cSh = bgfx::createShader(memCs);
-				return bgfx::createProgram(cSh, true);
-			}
-			else
-				return BGFX_INVALID_HANDLE;
-		}
-
-		void compileShaders()
-		{
-		}
 
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
 		{
