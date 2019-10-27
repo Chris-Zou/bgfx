@@ -513,6 +513,7 @@ or _OPTIONS["with-combined-examples"] then
 		, "45-deferred-shading"
 		, "46-shadow-mapping"
 		, "47-AtmosphereScattering"
+		, "48-DolphinEngine"
 		)
 
 	-- C99 source doesn't compile under WinRT settings

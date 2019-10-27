@@ -414,4 +414,13 @@ mat3 cofactor( mat4 _m )
      _m[0][0]*_m[1][1]-_m[0][1]*_m[1][0] );
 }
 
+mat3 mat3_from_rows(vec3 c0, vec3 c1, vec3 c2)
+{
+    mat3 m = mat3(c0, c1, c2);
+#if !BGFX_SHADER_LANGUAGE_HLSL
+    m = transpose(m);
+#endif
+    return m;
+}
+
 #endif // __SHADERLIB_SH__
