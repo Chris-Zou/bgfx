@@ -360,35 +360,6 @@ int _main_(int _argc, char** _argv)
 			settings.m_sampleCount = 0;
 		}
 
-		// Lights.
-		Light pointLight =
-		{
-			{ { 0.0f, 0.0f, 0.0f, 1.0f } }, //position
-		};
-
-		pointLight.m_position.m_x = 0.0f;
-		pointLight.m_position.m_y = 0.0f;
-		pointLight.m_position.m_z = 0.0f;
-
-		// Update uniforms.
-		s_gData.m_uniforms.m_roughness = settings.m_roughness;
-		s_gData.m_uniforms.m_reflectance = settings.m_reflectance;
-		s_gData.m_uniforms.m_lightPtr = &pointLight;
-
-		// Setup uniforms.
-
-		s_gData.m_uniforms.m_albedo = glm::vec4(
-			powf(settings.m_diffColor[0], 2.2f),
-			powf(settings.m_diffColor[1], 2.2f),
-			powf(settings.m_diffColor[2], 2.2f),
-			1.0f);
-
-		// Clear color (maps to 1 after tonemapping)
-		s_gData.m_uniforms.m_color = vec4(25.7f, 25.7f, 25.7f, 1.0f);
-
-		float lightMtx[16];
-		s_gData.m_uniforms.setPtrs(&pointLight, lightMtx);
-
 		// Grab camera position
 		bx::Vec3 viewPos;
 		viewPos = cameraGetPosition();
@@ -417,13 +388,10 @@ int _main_(int _argc, char** _argv)
 
 		uint8_t passViewID = RENDERVIEW_DRAWSCENE_0_ID;
 
+		//color pass
 		{
-			s_gData.m_uniforms.m_sampleCount = (float)settings.m_sampleCount;
-			s_gData.m_uniforms.submitPerFrameUniforms(glm::vec4(viewPos.x, viewPos.y, viewPos.z, 1.0f));
-
-			bgfx::setViewTransform(passViewID, viewState.m_view, proj);
-
 			bgfx::setViewFrameBuffer(passViewID, s_rtColorBuffer);
+			bgfx::setViewName(passViewID, "Color Pass");
 			bgfx::setViewRect(passViewID, 0, 0, uint16_t(viewState.m_width), uint16_t(viewState.m_height));
 
 			uint32_t flagsRT = BGFX_CLEAR_DEPTH;
@@ -440,63 +408,11 @@ int _main_(int _argc, char** _argv)
 			);
 			bgfx::touch(passViewID);
 
+			bgfx::setViewTransform(passViewID, viewState.m_view, proj);
 			for (uint64_t renderIdx = 0; renderIdx < rlist.count; ++renderIdx)
 			{
-				rlist.models[renderIdx].submit(s_gData, passViewID,
-					s_programs.m_pbrShader, s_renderStates[RenderState::ZPass]);
+				rlist.models[renderIdx].submit(s_gData, passViewID, s_programs.m_pbrShader, s_renderStates[RenderState::ColorPass]);
 			}
-
-			/*for (uint64_t renderIdx = 0; renderIdx < llist.count; ++renderIdx)
-			{
-				glm::mat4 lightTransform = SetLightUniforms(lsettings[renderIdx]);
-				llist.models[renderIdx].m_transform = lightTransform;
-				LightMaps colorMaps = LightColorMaps(lsettings[renderIdx].textureIdx);
-
-				llist.models[renderIdx].submit(s_gData, passViewID,
-					s_programs.m_packDepthLight, colorMaps, s_renderStates[RenderState::ZTwoSizePass]);
-			}*/
-
-			// Render passes
-			for (int renderPassIdx = 0; renderPassIdx < 2; renderPassIdx++)
-			{
-				// Render scene once for each light
-				//for (int lightPassIdx = 0; lightPassIdx < llist.count; ++lightPassIdx)
-				//{
-				//	const LightData& light = lsettings[lightPassIdx];
-
-				//	// Setup light
-				//	//SetLightUniforms(light);
-				//	LightMaps colorMaps = LightColorMaps(light.textureIdx);
-
-				//	bool diffuse = (renderPassIdx == 0);
-				//	bgfx::ProgramHandle progDraw = GetLightProgram(diffuse, settings.m_useGT);
-
-				//	// Render scene models
-				//	for (uint64_t renderIdx = 0; renderIdx < rlist.count; ++renderIdx)
-				//	{
-				//		rlist.models[renderIdx].submit(s_gData, passViewID,
-				//			progDraw, colorMaps, s_renderStates[RenderState::ColorPass]);
-				//	}
-				//}
-
-				for (uint64_t renderIdx = 0; renderIdx < rlist.count; ++renderIdx)
-				{
-					rlist.models[renderIdx].submit(s_gData, passViewID, s_programs.m_pbrShader, s_renderStates[RenderState::ColorPass]);
-				}
-			}
-
-			// render light objects
-			//for (uint64_t renderIdx = 0; renderIdx < llist.count; ++renderIdx)
-			//{
-			//	// setup light
-			//	glm::mat4 lightTransform = SetLightUniforms(lsettings[renderIdx]);
-			//	LightMaps colorMaps = LightColorMaps(lsettings[renderIdx].textureIdx);
-
-			//	llist.models[renderIdx].m_transform = lightTransform;
-			//	llist.models[renderIdx].submit(s_gData, passViewID,
-			//		s_programs.m_colorTextured, colorMaps,
-			//		s_renderStates[RenderState::ColorAlphaPass]);
-			//}
 
 			settings.m_sampleCount += NUM_SAMPLES;
 			++passViewID;
@@ -508,14 +424,13 @@ int _main_(int _argc, char** _argv)
 		bgfx::setViewFrameBuffer(blitID, handle);
 		bgfx::setViewRect(blitID, 0, 0, uint16_t(viewState.m_width), uint16_t(viewState.m_height));
 		bgfx::setViewTransform(blitID, screenView, screenProj);
+		bgfx::setViewName(blitID, "tone mapping");
 
 		bgfx::setTexture(2, s_gData.m_uColorMap, s_rtColorTexture);
 		bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A);
 		screenSpaceQuad(s_flipV);
 		bgfx::submit(blitID, s_programs.m_blit);
 
-		// Advance to next frame. Rendering thread will be kicked to
-		// process submitted rendering primitives.
 		bgfx::frame();
 	}
 

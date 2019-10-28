@@ -101,7 +101,7 @@ struct Uniforms
 	// Call this before each draw call.
 	void submitPerDrawUniforms()
 	{
-		bgfx::setUniform(u_lightMtx, m_lightMtxPtr);
+		//bgfx::setUniform(u_lightMtx, m_lightMtxPtr);
 	}
 
 	void destroy()
