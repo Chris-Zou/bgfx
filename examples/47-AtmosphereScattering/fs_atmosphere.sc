@@ -1,4 +1,4 @@
-$input v_texcoord
+$input v_texcoord, v_position
 
 #include "../common/common.sh"
 
@@ -177,10 +177,12 @@ void main()
 	vec2 uv = v_texcoord;
 	vec3 rayStart = CameraPos;
 
-	vec4 clipSpacePos = vec4(uv * 2.0 - 1, 1.0, 1.0);
-	vec4 worldPos = mul(u_invViewProj, clipSpacePos);
-	worldPos = worldPos / worldPos.w;
-	vec3 wpos = worldPos.xyz;
+	//vec4 clipSpacePos = vec4(uv * 2.0 - 1, 1.0, 1.0);
+	//vec4 worldPos = mul(u_invViewProj, clipSpacePos);
+	//worldPos = worldPos / worldPos.w;
+	//vec3 wpos = worldPos.xyz;
+
+	vec3 wpos = v_position;
 
 	vec3 rayDir = wpos - CameraPos;
 

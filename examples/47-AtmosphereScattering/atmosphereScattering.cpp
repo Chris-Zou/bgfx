@@ -130,7 +130,7 @@ namespace Atmosphere
 		}
 	}*/
 
-	static void setFarPlaneScreenSpace(const float* invProj)
+	static void setFarPlaneScreenSpace(const float* invView, const float* invProj)
 	{
 		float TL[4] = {-1.0f, 1.0f, 1.0f, 1.0f};
 		float TR[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -138,6 +138,9 @@ namespace Atmosphere
 		float BR[4] = {1.0f, -1.0f, 1.0f, 1.0f};
 
 		float iTL[4], iTR[4], iBL[4], iBR[4];
+
+		float invViewProj[16];
+		bx::mtxMul(invViewProj, invProj, invView);
 
 		bx::vec4MulMtx(iTL, TL, invProj);
 		bx::vec4MulMtx(iTR, TR, invProj);
@@ -154,9 +157,9 @@ namespace Atmosphere
 			vertex[0].m_v = 0.0f;
 			vertex[0].m_rgba = 0xffffffff;
 
-			vertex[1].setPosition(iBL);
-			vertex[1].m_u = 0.0f;
-			vertex[1].m_v = 1.0f;
+			vertex[1].setPosition(iTR);
+			vertex[1].m_u = 1.0f;
+			vertex[1].m_v = 0.0f;
 			vertex[1].m_rgba = 0xffffffff;
 
 			vertex[2].setPosition(iBR);
@@ -169,9 +172,9 @@ namespace Atmosphere
 			vertex[3].m_v = 1.0f;
 			vertex[3].m_rgba = 0xffffffff;
 
-			vertex[4].setPosition(iTR);
-			vertex[4].m_u = 1.0f;
-			vertex[4].m_v = 0.0f;
+			vertex[4].setPosition(iBL);
+			vertex[4].m_u = 0.0f;
+			vertex[4].m_v = 1.0f;
 			vertex[4].m_rgba = 0xffffffff;
 
 			vertex[5].setPosition(iTL);
@@ -183,10 +186,10 @@ namespace Atmosphere
 		}
 	}
 
-	class ExampleShadowMapping : public entry::AppI
+	class AtmosphereScattering : public entry::AppI
 	{
 	public:
-		ExampleShadowMapping(const char* _name, const char* _description, const char* _url)
+		AtmosphereScattering(const char* _name, const char* _description, const char* _url)
 			: entry::AppI(_name, _description, _url)
 		{
 			m_fPlanetRadius = 6371000.0f;
@@ -289,7 +292,7 @@ namespace Atmosphere
 			imguiCreate();
 
 			cameraCreate();
-			cameraSetPosition({ 0.0f, 0.0f, 0.0f });
+			cameraSetPosition({ 0.0f, 20.0f, 0.0f });
 			cameraSetHorizontalAngle(bx::kPi / 2.0);
 
 			ScreenSpaceQuadVertex::init();
@@ -412,13 +415,13 @@ namespace Atmosphere
 			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100000.0f, m_caps->homogeneousDepth);
 			bx::mtxInverse(invProj, proj);
 
+			float view[16], invView[16];
+			cameraGetViewMtx(view);
+			bx::mtxInverse(invView, view);
+
 			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
-			float orthoProjection[16];
-			bx::mtxOrtho(orthoProjection, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 2.0f, 0.0f, m_caps->homogeneousDepth);
-			bgfx::setViewTransform(0, nullptr, orthoProjection);
-
-			
+			bgfx::setViewTransform(0, view, proj);
 
 			bx::Vec3 cameraPos = cameraGetPosition();
 			bgfx::setUniform(m_cameraPos, &cameraPos);
@@ -436,7 +439,7 @@ namespace Atmosphere
 				| BGFX_STATE_CULL_CCW;
 			bgfx::setState(stateOpaque);
 
-			setFarPlaneScreenSpace(invProj);
+			setFarPlaneScreenSpace(invView, invProj);
 
 			//setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
 			//bgfx::setViewFrameBuffer(1, BGFX_INVALID_HANDLE);
@@ -513,7 +516,7 @@ namespace Atmosphere
 } // namespace
 
 ENTRY_IMPLEMENT_MAIN(
-	Atmosphere::ExampleShadowMapping
+	Atmosphere::AtmosphereScattering
 	, "47-AtmosphereScattering"
 	, "AtmosphereScattering."
 	, "https://bkaradzic.github.io/bgfx/examples.html#tess"
