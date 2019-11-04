@@ -6,8 +6,9 @@ $output v_texcoord, v_position
 void main()
 {
 	v_texcoord = a_texcoord0;
-	gl_Position = mul(u_modelViewProj, vec4(a_position, 1.0));
-	gl_Position.z = gl_Position.w;
+	gl_Position = vec4(a_position, 1.0);
 
-	v_position = a_position;
+	vec4 pos = mul(u_invViewProj, vec4(a_position, 1.0f));
+
+	v_position = pos.xyz / pos.w;
 }

@@ -67,117 +67,44 @@ namespace Atmosphere
 	bool ScreenSpaceQuadVertex::isInitialized = false;
 	bgfx::VertexLayout ScreenSpaceQuadVertex::ms_layout;
 
-	/*static void setScreenSpaceQuad(
-		const float _textureWidth,
-		const float _textureHeight,
-		const bool _originBottomLeft = false,
-		const float _width = 1.0f,
-		const float _height = 1.0f)
-	{
-		if (3 == bgfx::getAvailTransientVertexBuffer(3, ScreenSpaceQuadVertex::ms_layout))
-		{
-
-			bgfx::TransientVertexBuffer vb;
-			bgfx::allocTransientVertexBuffer(&vb, 3, ScreenSpaceQuadVertex::ms_layout);
-			ScreenSpaceQuadVertex* vertex = (ScreenSpaceQuadVertex*)vb.data;
-
-			const float zz = 2.0f;
-
-			const float minx = -_width;
-			const float maxx = _width;
-			const float miny = 0.0f;
-			const float maxy = _height * 2.0f;
-
-			const float texelHalfW = 0.0f / _textureWidth;
-			const float texelHalfH = 0.0f / _textureHeight;
-			const float minu = -1.0f + texelHalfW;
-			const float maxu = 1.0f + texelHalfW;
-
-			float minv = texelHalfH;
-			float maxv = 2.0f + texelHalfH;
-
-			if (_originBottomLeft) {
-				float temp = minv;
-				minv = maxv;
-				maxv = temp;
-
-				minv -= 1.0f;
-				maxv -= 1.0f;
-			}
-
-			vertex[0].m_x = minx;
-			vertex[0].m_y = miny;
-			vertex[0].m_z = zz;
-			vertex[0].m_rgba = 0xffffffff;
-			vertex[0].m_u = minu;
-			vertex[0].m_v = minv;
-
-			vertex[1].m_x = maxx;
-			vertex[1].m_y = miny;
-			vertex[1].m_z = zz;
-			vertex[1].m_rgba = 0xffffffff;
-			vertex[1].m_u = maxu;
-			vertex[1].m_v = minv;
-
-			vertex[2].m_x = maxx;
-			vertex[2].m_y = maxy;
-			vertex[2].m_z = zz;
-			vertex[2].m_rgba = 0xffffffff;
-			vertex[2].m_u = maxu;
-			vertex[2].m_v = maxv;
-
-			bgfx::setVertexBuffer(0, &vb);
-		}
-	}*/
-
-	static void setFarPlaneScreenSpace(const float* invView, const float* invProj)
+	static void setFarPlaneScreenSpace()
 	{
 		float TL[4] = {-1.0f, 1.0f, 1.0f, 1.0f};
 		float TR[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 		float BL[4] = {-1.0f, -1.0f, 1.0f, 1.0f};
 		float BR[4] = {1.0f, -1.0f, 1.0f, 1.0f};
 
-		float iTL[4], iTR[4], iBL[4], iBR[4];
-
-		float invViewProj[16];
-		bx::mtxMul(invViewProj, invProj, invView);
-
-		bx::vec4MulMtx(iTL, TL, invProj);
-		bx::vec4MulMtx(iTR, TR, invProj);
-		bx::vec4MulMtx(iBL, BL, invProj);
-		bx::vec4MulMtx(iBR, BR, invProj);
-
 		if (3 == bgfx::getAvailTransientVertexBuffer(3, ScreenSpaceQuadVertex::ms_layout))
 		{
 			bgfx::TransientVertexBuffer vb;
 			bgfx::allocTransientVertexBuffer(&vb, 6, ScreenSpaceQuadVertex::ms_layout);
 			ScreenSpaceQuadVertex* vertex = (ScreenSpaceQuadVertex*)vb.data;
-			vertex[0].setPosition(iTL);
+			vertex[0].setPosition(TL);
 			vertex[0].m_u = 0.0f;
 			vertex[0].m_v = 0.0f;
 			vertex[0].m_rgba = 0xffffffff;
 
-			vertex[1].setPosition(iTR);
+			vertex[1].setPosition(TR);
 			vertex[1].m_u = 1.0f;
 			vertex[1].m_v = 0.0f;
 			vertex[1].m_rgba = 0xffffffff;
 
-			vertex[2].setPosition(iBR);
+			vertex[2].setPosition(BR);
 			vertex[2].m_u = 1.0f;
 			vertex[2].m_v = 1.0f;
 			vertex[2].m_rgba = 0xffffffff;
 
-			vertex[3].setPosition(iBR);
+			vertex[3].setPosition(BR);
 			vertex[3].m_u = 1.0f;
 			vertex[3].m_v = 1.0f;
 			vertex[3].m_rgba = 0xffffffff;
 
-			vertex[4].setPosition(iBL);
+			vertex[4].setPosition(BL);
 			vertex[4].m_u = 0.0f;
 			vertex[4].m_v = 1.0f;
 			vertex[4].m_rgba = 0xffffffff;
 
-			vertex[5].setPosition(iTL);
+			vertex[5].setPosition(TL);
 			vertex[5].m_u = 0.0f;
 			vertex[5].m_v = 0.0f;
 			vertex[5].m_rgba = 0xffffffff;
@@ -412,12 +339,16 @@ namespace Atmosphere
 			bgfx::touch(0);
 
 			float proj[16], invProj[16];
-			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100000.0f, m_caps->homogeneousDepth);
+			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100000000.0f, m_caps->homogeneousDepth);
 			bx::mtxInverse(invProj, proj);
 
 			float view[16], invView[16];
 			cameraGetViewMtx(view);
 			bx::mtxInverse(invView, view);
+
+			float vp[16], invVP[16];
+			bx::mtxMul(vp, view, proj);
+			bx::mtxInverse(invVP, vp);
 
 			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
@@ -428,9 +359,6 @@ namespace Atmosphere
 
 			bgfx::setViewName(0, "AtmosphereScattering");
 
-			
-			//bgfx::setViewFrameBuffer(0, m_frameBuffer);
-
 			uint64_t stateOpaque = 0
 				| BGFX_STATE_WRITE_RGB
 				| BGFX_STATE_WRITE_A
@@ -439,10 +367,7 @@ namespace Atmosphere
 				| BGFX_STATE_CULL_CCW;
 			bgfx::setState(stateOpaque);
 
-			setFarPlaneScreenSpace(invView, invProj);
-
-			//setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
-			//bgfx::setViewFrameBuffer(1, BGFX_INVALID_HANDLE);
+			setFarPlaneScreenSpace();
 
 			bgfx::submit(0, m_atmophereScattering);
 
