@@ -27,6 +27,8 @@
 #include <glm/matrix.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "Renderer/toneMappingRender.h"
+
 namespace Atmosphere
 {
 	struct ScreenSpaceQuadVertex
@@ -226,7 +228,9 @@ namespace Atmosphere
 
 			imguiCreate();
 
-			m_aCameraPos[0] = m_aCameraPos[1] = m_aCameraPos[2] =  0.0f;
+			m_aCameraPos[0] = 0.0f;
+			m_aCameraPos[1] = -10.0f;
+			m_aCameraPos[2] = 0.0f;
 
 			cameraCreate();
 			cameraSetPosition({ m_aCameraPos[0], m_aCameraPos[1], m_aCameraPos[2] });
@@ -262,21 +266,22 @@ namespace Atmosphere
 
 			m_bIsFirstFrame = false;
 
-			m_vIncomingLight[0] = 4.0f;
-			m_vIncomingLight[1] = 4.0f;
-			m_vIncomingLight[2] = 4.0f;
+			m_vIncomingLight[0] = 2.0f;
+			m_vIncomingLight[1] = 2.0f;
+			m_vIncomingLight[2] = 2.0f;
 
 			m_vLightDir[0] = 0.0f;
 			m_vLightDir[1] = 0.0f;
 			m_vLightDir[2] = 1.0f;
+
+			m_toneMapParams.m_width = m_width;
+			m_toneMapParams.m_height = m_height;
+			m_toneMapParams.m_originBottomLeft = m_caps->originBottomLeft;
+			m_toneMapPass.init(m_caps);
 		}
 
 		void setConstantUniforms()
 		{
-			/*bgfx::setUniform(m_planetRadius, &m_fPlanetRadius);
-			bgfx::setUniform(m_atmosphereHeight, &m_fAtmosphereHeight);
-			bgfx::setUniform(m_sunIntensity, &m_fSunIntensity);
-			bgfx::setUniform(m_distanceScale, &m_fDistanceScale);*/
 			bgfx::setUniform(m_densityScaleHeight, &m_fDensityHeight);
 
 			bgfx::setUniform(m_scatteringR, &m_vScatteringR);
@@ -322,6 +327,8 @@ namespace Atmosphere
 
 			imguiDestroy();
 
+			m_toneMapPass.destroy();
+
 			bgfx::shutdown();
 
 			return 0;
@@ -331,6 +338,40 @@ namespace Atmosphere
 		{
 			if (entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState)) {
 				return false;
+			}
+
+			if (!bgfx::isValid(m_pbrFrameBuffer) || m_oldWidth != m_width || m_oldHeight != m_height || m_oldReset != m_reset)
+			{
+				m_oldWidth = m_width;
+				m_oldHeight = m_height;
+				m_oldReset = m_reset;
+
+				uint32_t msaa = (m_reset & BGFX_RESET_MSAA_MASK) >> BGFX_RESET_MSAA_SHIFT;
+
+				if (bgfx::isValid(m_pbrFrameBuffer))
+				{
+					bgfx::destroy(m_pbrFrameBuffer);
+				}
+
+				m_pbrFBTexture[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT) | BGFX_SAMPLER_UVW_CLAMP | BGFX_SAMPLER_POINT);
+				const uint64_t textureFlags = BGFX_TEXTURE_RT_WRITE_ONLY | (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT);
+
+				bgfx::TextureFormat::Enum depthFormat;
+				if (bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::D24S8, textureFlags))
+				{
+					depthFormat = bgfx::TextureFormat::D24S8;
+				}
+				else
+				{
+					depthFormat = bgfx::TextureFormat::D32;
+				}
+
+				m_pbrFBTexture[1] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, depthFormat, textureFlags);
+
+				bgfx::setName(m_pbrFBTexture[0], "HDR Color Buffer");
+				bgfx::setName(m_pbrFBTexture[1], "Depth Buffer");
+
+				m_pbrFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_pbrFBTexture), m_pbrFBTexture, true);
 			}
 
 			imguiBeginFrame(m_mouseState.m_mx
@@ -358,7 +399,7 @@ namespace Atmosphere
 				, 0
 			);
 
-			ImGui::SliderFloat3("CamHeight", m_aCameraPos, -1000.0f, 1000.0f);
+			ImGui::SliderFloat3("CamHeight", m_aCameraPos, -100.0f, 100.0f);
 			ImGui::SliderFloat3("LightDir", m_vLightDir, -1.0f, 1.0f);
 			ImGui::SliderFloat3("InLight", m_vIncomingLight, 0.0f, 10.0f);
 
@@ -366,7 +407,16 @@ namespace Atmosphere
 
 			imguiEndFrame();
 
+			bgfx::setViewFrameBuffer(0, m_pbrFrameBuffer);
+
 			bgfx::touch(0);
+
+			int64_t now = bx::getHPCounter();
+			static int64_t last = now;
+			const int64_t frameTime = now - last;
+			last = now;
+			const double freq = double(bx::getHPFrequency());
+			const float deltaTime = (float)(frameTime / freq);
 
 			float proj[16];
 			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, m_caps->homogeneousDepth);
@@ -400,6 +450,12 @@ namespace Atmosphere
 
 			bgfx::submit(0, m_atmophereScattering);
 
+			bgfx::ViewId toneMappingPass = 1;
+			bgfx::setViewName(toneMappingPass, "Tone Mapping");
+			bgfx::setViewRect(toneMappingPass, 0, 0, bgfx::BackbufferRatio::Equal);
+
+			m_toneMapPass.render(m_pbrFBTexture[0], m_toneMapParams, deltaTime, toneMappingPass);
+
 			bgfx::frame();
 
 			return true;
@@ -412,6 +468,10 @@ namespace Atmosphere
 		uint32_t m_height;
 		uint32_t m_debug;
 		uint32_t m_reset;
+
+		uint32_t m_oldWidth;
+		uint32_t m_oldHeight;
+		uint32_t m_oldReset;
 
 		const bgfx::Caps *m_caps;
 
@@ -469,7 +529,13 @@ namespace Atmosphere
 		float m_aParams[4];
 
 		float m_aCameraPos[3];
+
+		bgfx::TextureHandle m_pbrFBTexture[2];
+		bgfx::FrameBufferHandle m_pbrFrameBuffer = BGFX_INVALID_HANDLE;
 #pragma endregion
+
+		Dolphin::ToneMapParams m_toneMapParams;
+		Dolphin::ToneMapping m_toneMapPass;
 	};
 
 } // namespace
