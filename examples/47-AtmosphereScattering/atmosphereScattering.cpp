@@ -134,6 +134,12 @@ namespace Atmosphere
 			m_fMieScatterCoef = 1.0f;
 			m_fMieExtinctionCoef = 1.0f;
 
+			m_vScatteringR = m_vRayleighSct;
+			m_vExtinctionR = m_vRayleighSct;
+
+			m_vScatteringM = m_vMieSct;
+			m_vExtinctionM = m_vMieSct;
+
 			m_fMieG = 0.76f;
 		}
 #pragma region ShaderCompiler
@@ -209,6 +215,8 @@ namespace Atmosphere
 			m_cameraPos = bgfx::createUniform("CameraPos", bgfx::UniformType::Vec4);
 			m_lightDir = bgfx::createUniform("LightDir", bgfx::UniformType::Vec4);
 
+			m_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
+
 			if (m_bIsFirstFrame)
 			{
 				compileShaders();
@@ -218,8 +226,10 @@ namespace Atmosphere
 
 			imguiCreate();
 
+			m_aCameraPos[0] = m_aCameraPos[1] = m_aCameraPos[2] =  0.0f;
+
 			cameraCreate();
-			cameraSetPosition({ 0.0f, 20.0f, 0.0f });
+			cameraSetPosition({ m_aCameraPos[0], m_aCameraPos[1], m_aCameraPos[2] });
 			cameraSetHorizontalAngle(bx::kPi / 2.0);
 
 			ScreenSpaceQuadVertex::init();
@@ -251,27 +261,43 @@ namespace Atmosphere
 			m_frameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_fbTexture), m_fbTexture, true);
 
 			m_bIsFirstFrame = false;
+
+			m_vIncomingLight[0] = 4.0f;
+			m_vIncomingLight[1] = 4.0f;
+			m_vIncomingLight[2] = 4.0f;
+
+			m_vLightDir[0] = 0.0f;
+			m_vLightDir[1] = 0.0f;
+			m_vLightDir[2] = 1.0f;
 		}
 
 		void setConstantUniforms()
 		{
-			bgfx::setUniform(m_planetRadius, &m_fPlanetRadius);
+			/*bgfx::setUniform(m_planetRadius, &m_fPlanetRadius);
 			bgfx::setUniform(m_atmosphereHeight, &m_fAtmosphereHeight);
 			bgfx::setUniform(m_sunIntensity, &m_fSunIntensity);
-			bgfx::setUniform(m_distanceScale, &m_fDistanceScale);
+			bgfx::setUniform(m_distanceScale, &m_fDistanceScale);*/
 			bgfx::setUniform(m_densityScaleHeight, &m_fDensityHeight);
 
-			bgfx::setUniform(m_scatteringR, &m_vRayleighSct);
-			bgfx::setUniform(m_scatteringM, &m_vMieSct);
+			bgfx::setUniform(m_scatteringR, &m_vScatteringR);
+			bgfx::setUniform(m_scatteringM, &m_vScatteringM);
 			bgfx::setUniform(m_extinctionR, &m_vExtinctionR);
 			bgfx::setUniform(m_extinctionM, &m_vExtinctionM);
 
 			bgfx::setUniform(m_mieG, &m_fMieG);
+
+			m_aParams[0] = m_fPlanetRadius;
+			m_aParams[1] = m_fAtmosphereHeight;
+			m_aParams[2] = m_fSunIntensity;
+			m_aParams[3] = m_fDistanceScale;
+
+			bgfx::setUniform(m_params, m_aParams);
 		}
 
 		void setUniforms()
 		{
 			bgfx::setUniform(m_incomingLight, &m_vIncomingLight);
+			
 			bgfx::setUniform(m_lightDir, &m_vLightDir);
 		}
 		
@@ -332,27 +358,27 @@ namespace Atmosphere
 				, 0
 			);
 
+			ImGui::SliderFloat3("CamHeight", m_aCameraPos, -1000.0f, 1000.0f);
+			ImGui::SliderFloat3("LightDir", m_vLightDir, -1.0f, 1.0f);
+			ImGui::SliderFloat3("InLight", m_vIncomingLight, 0.0f, 10.0f);
+
 			ImGui::End();
 
 			imguiEndFrame();
 
 			bgfx::touch(0);
 
-			float proj[16], invProj[16];
-			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 100000000.0f, m_caps->homogeneousDepth);
-			bx::mtxInverse(invProj, proj);
+			float proj[16];
+			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, m_caps->homogeneousDepth);
 
-			float view[16], invView[16];
+			float view[16];
 			cameraGetViewMtx(view);
-			bx::mtxInverse(invView, view);
-
-			float vp[16], invVP[16];
-			bx::mtxMul(vp, view, proj);
-			bx::mtxInverse(invVP, vp);
 
 			bgfx::setViewRect(0, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
 			bgfx::setViewTransform(0, view, proj);
+
+			cameraSetPosition({ m_aCameraPos[0], m_aCameraPos[1], m_aCameraPos[2] });
 
 			bx::Vec3 cameraPos = cameraGetPosition();
 			bgfx::setUniform(m_cameraPos, &cameraPos);
@@ -368,6 +394,9 @@ namespace Atmosphere
 			bgfx::setState(stateOpaque);
 
 			setFarPlaneScreenSpace();
+
+			setConstantUniforms();
+			setUniforms();
 
 			bgfx::submit(0, m_atmophereScattering);
 
@@ -410,6 +439,7 @@ namespace Atmosphere
 		bgfx::UniformHandle m_incomingLight;
 		bgfx::UniformHandle m_lightDir;
 		bgfx::UniformHandle m_cameraPos;
+		bgfx::UniformHandle m_params;
 #pragma endregion
 
 #pragma region datas
@@ -433,8 +463,12 @@ namespace Atmosphere
 		bx::Vec3 m_vExtinctionR;
 		bx::Vec3 m_vExtinctionM;
 
-		bx::Vec3 m_vIncomingLight;
-		bx::Vec3 m_vLightDir;
+		float m_vIncomingLight[3];
+		float m_vLightDir[3];
+
+		float m_aParams[4];
+
+		float m_aCameraPos[3];
 #pragma endregion
 	};
 

@@ -4,10 +4,19 @@ $input v_texcoord, v_position
 
 #define PI 3.1415926
 
+#if 0
 uniform float PlanetRadius;
 uniform float AtmosphereHeight;
 uniform float SunIntensity;
 uniform float DistanceScale;
+#else
+uniform vec4 u_params;
+#define PlanetRadius u_params.x
+#define AtmosphereHeight u_params.y
+#define SunIntensity u_params.z
+#define DistanceScale u_params.w
+#endif
+
 uniform vec2 DensityScaleHeight;
 
 uniform vec3 ScatteringR;
@@ -177,11 +186,6 @@ void main()
 	vec2 uv = v_texcoord;
 	vec3 rayStart = CameraPos;
 
-	//vec4 clipSpacePos = vec4(uv * 2.0 - 1, 1.0, 1.0);
-	//vec4 worldPos = mul(u_invViewProj, clipSpacePos);
-	//worldPos = worldPos / worldPos.w;
-	//vec3 wpos = worldPos.xyz;
-
 	vec3 wpos = v_position;
 
 	vec3 rayDir = wpos - CameraPos;
@@ -201,8 +205,9 @@ void main()
 	}
 
 	vec4 extinction;
-	vec4 inscattering = IntegrateInscattering(rayStart, rayDir, rayLength, planetCenter, DistanceScale, LightDir, 16, extinction);
+	vec3 lightDir = normalize(LightDir);
+	vec4 inscattering = IntegrateInscattering(rayStart, rayDir, rayLength, planetCenter, DistanceScale, lightDir, 16, extinction);
 
-	//gl_FragColor = inscattering;
-	gl_FragColor = vec4(uv.x, uv.y, 1.0, 1.0);
+	gl_FragColor = inscattering;
+	//gl_FragColor = vec4(uv.x, uv.y, 1.0, 1.0);
 }
