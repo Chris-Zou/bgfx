@@ -428,6 +428,129 @@ namespace CSM
 
 				m_toneMapParams.m_width = m_width;
 				m_toneMapParams.m_height = m_height;
+
+				m_pbrFBTextures[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT));
+
+				const uint64_t textureFlags = BGFX_TEXTURE_RT | (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT) | BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP;
+
+				bgfx::TextureFormat::Enum depthFormat = bgfx::TextureFormat::D32;
+				m_pbrFBTextures[1] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, depthFormat, textureFlags);
+
+				bgfx::setName(m_pbrFBTextures[0], "HDR Buffer");
+				bgfx::setName(m_pbrFBTextures[1], "Depth Buffer");
+
+				m_pbrFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_pbrFBTextures), m_pbrFBTextures, true);
+
+				setupDepthReductionTargets(uint16_t(m_width), uint16_t(m_height));
+			}
+
+			imguiBeginFrame(m_mouseState.m_mx, m_mouseState.m_my, (m_mouseState.m_buttons[entry::MouseButton::Left] ? IMGUI_MBUT_LEFT : 0) | (m_mouseState.m_buttons[entry::MouseButton::Right] ? IMGUI_MBUT_RIGHT : 0) | (m_mouseState.m_buttons[entry::MouseButton::Middle] ? IMGUI_MBUT_MIDDLE : 0), m_mouseState.m_mz, uint16_t(m_width), uint16_t(m_height));
+
+			showExampleDialog(this);
+
+			ImGui::SetNextWindowPos(
+				ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f), ImGuiCond_FirstUseEver);
+			ImGui::SetNextWindowSize(
+				ImVec2(m_width / 5.0f, m_height / 3.0f), ImGuiCond_FirstUseEver);
+			ImGui::Begin("Settings", NULL, 0);
+
+			ImGui::DragFloat("Total Brightness", &m_directionalLight.m_intensity, 0.5f, 0.0f, 250.0f);
+			ImGui::Checkbox("Update Lights", &m_updateLights);
+
+			if (!m_updateLights) {
+				ImGui::SliderFloat3("Light Direction", glm::value_ptr(m_directionalLight.m_direction), -1.0f, 1.0f);
+				m_directionalLight.m_direction = glm::normalize(m_directionalLight.m_direction);
+			}
+
+			ImGui::SliderFloat("Manual Bias", &m_sceneUniforms.m_manualBias, 0.0f, 0.01f);
+			ImGui::Text("Slope Scale Bias Factor");
+			ImGui::SliderFloat("Slope", &m_sceneUniforms.m_slopeScaleBias, 0.0f, 0.01f);
+			ImGui::Text("Normal Offset Bias");
+			ImGui::SliderFloat("Normal", &m_sceneUniforms.m_normalOffsetFactor, 0.0f, 0.05f);
+			ImGui::Text("Poisson Disk Size");
+			ImGui::SliderFloat("Disk", &m_directionalLight.m_cascadeBounds[0].w, 0.001f, 0.1f);
+
+			ImGui::End();
+
+			imguiEndFrame();
+
+			bgfx::touch(0);
+
+			bgfx::ViewId viewCount = 0;
+			bgfx::ViewId zPrepass = viewCount++;
+			bgfx::setViewFrameBuffer(zPrepass, m_pbrFrameBuffer);
+			bgfx::setViewName(zPrepass, "Z Prepass");
+			bgfx::setViewRect(zPrepass, 0, 0, uint16_t(m_width), uint16_t(m_height));
+			bgfx::setViewClear(zPrepass, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000ff, 1.0f, 0);
+
+			bgfx::ViewId depthReductionPass = viewCount++;
+			bgfx::setViewName(depthReductionPass, "Depth Reduction");
+
+			bgfx::ViewId shadowPass[NUM_CASCADES];
+			for (size_t i = 0; i < NUM_CASCADES; ++i)
+			{
+				shadowPass[i] = viewCount++;
+				bgfx::setViewFrameBuffer(shadowPass[i], m_shadowMapFrameBuffers[i]);
+				bgfx::setViewName(shadowPass[i], "Shadow Map");
+				bgfx::setViewRect(shadowPass[i], 0, 0, m_shadowMapWidth, m_shadowMapWidth);
+				bgfx::setViewClear(shadowPass[i], BGFX_CLEAR_DEPTH, 0x000000ff, 1.0f, 0);
+			}
+
+			bgfx::ViewId meshPass = viewCount++;
+			bgfx::setViewFrameBuffer(meshPass, m_pbrFrameBuffer);
+			bgfx::setViewName(meshPass, "Draw Meshes");
+			bgfx::setViewRect(meshPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
+
+			int64_t now = bx::getHPCounter();
+			static int64_t last = now;
+			const int64_t frameTime = now - last;
+			last = now;
+			const double freq = double(bx::getHPFrequency());
+			const float deltaTime = (float)(frameTime / freq);
+			m_time += deltaTime;
+
+			float fov = 60.0f;
+			float proj[16];
+			bx::mtxProj(proj, fov, float(m_width) / float(m_height), NEAR_PLANE, FAR_PLANE, m_caps->homogeneousDepth);
+
+			if (m_updateLights)
+			{
+				m_directionalLight.m_direction = glm::normalize(glm::vec4{ bx::cos(0.2f * m_time), -bx::abs(bx::sin(0.2f * m_time)), bx::cos(0.2f * m_time) * 0.2f, 0.0f });
+			}
+
+			float view[16];
+			cameraUpdate(0.1f * deltaTime, m_mouseState);
+			cameraGetViewMtx(view);
+
+			bgfx::setViewTransform(zPrepass, view, proj);
+			bgfx::setViewTransform(meshPass, view, proj);
+
+			bx::Vec3 cameraPos = cameraGetPosition();
+
+			{
+				uint64_t statePrepass = 0
+					| BGFX_STATE_WRITE_Z
+					| BGFX_STATE_DEPTH_TEST_LESS
+					| BGFX_STATE_CULL_CCW
+					| BGFX_STATE_MSAA;
+
+				renderMeshes(m_model.opaqueMeshes, cameraPos, statePrepass, m_prepassProgram, zPrepass);
+			}
+
+			{
+				bgfx::blit(shadowPass[0], m_cpuReadableDepth, 0, 0, m_depthReductionTargets[m_depthReductionTargets.size() - 1], 0, 0);
+				bgfx::readTexture(m_cpuReadableDepth, m_depthData, 0);
+				float minDepth = bx::halfToFloat(m_depthData[0]);
+				float maxDepth = bx::halfToFloat(m_depthData[1]);
+
+				glm::mat4 viewProj = glm::make_mat4(proj) * glm::make_mat4(view);
+				glm::mat4 invViewProj = glm::inverse(viewProj);
+
+				float minWorldDepth = minDepth * (FAR_PLANE - NEAR_PLANE) + NEAR_PLANE;
+				float maxWorldDepth = maxDepth * (FAR_PLANE - NEAR_PLANE) + NEAR_PLANE;
+
+				float depthRatio = bx::pow(maxWorldDepth / minWorldDepth, 1.0f / NUM_CASCADES);
+				glm::vec2 cascadeMinMax[NUM_CASCADES] = {};
 			}
 		}
 
@@ -476,7 +599,10 @@ namespace CSM
 		Dolphin::ToneMapping m_toneMapPass;
 
 		const bgfx::Caps* m_caps;
-		bool m_isComputeSupported = false;
+		bool m_isComputeSupported = true;
+		bool m_updateLights = true;
+
+		uint16_t m_depthData[2] = { 0, bx::kHalfFloatOne };
 	};
 
 } // namespace
