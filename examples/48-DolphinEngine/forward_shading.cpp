@@ -26,6 +26,7 @@ static bool s_flipV = false;
 
 static bgfx::FrameBufferHandle s_rtColorBuffer;
 static bgfx::TextureHandle s_rtColorTexture;
+static bgfx::TextureHandle s_rtDepthTexture;
 
 static GlobalRenderingData s_gData;
 
@@ -104,6 +105,7 @@ struct Programs
 	{
 		bgfx::destroy(m_pbrShader);
 		bgfx::destroy(m_pbrShaderWithMask);
+		bgfx::destroy(m_blit);
 	}
 
 	bgfx::ProgramHandle m_blit;
@@ -163,33 +165,6 @@ void screenSpaceQuad(bool _originBottomLeft = true, float zz = 0.0f, float _widt
 	}
 }
 
-glm::mat4 SetLightUniforms(const LightData& l)
-{
-	// setup light transform
-	glm::mat4 identity(1.0f);
-
-	glm::mat4 scale = glm::scale(identity, glm::vec3(0.5f*l.scale, 1.0f));
-	glm::mat4 translate = glm::translate(identity, l.position);
-	glm::mat4 rotateZ = glm::rotate(identity, glm::radians(l.rotation.z), glm::vec3(0, 0, -1));
-	glm::mat4 rotateY = glm::rotate(identity, glm::radians(l.rotation.y), glm::vec3(0, -1, 0));
-	glm::mat4 rotateX = glm::rotate(identity, glm::radians(l.rotation.x), glm::vec3(-1, 0, 0));
-
-	glm::mat4 lightTransform = translate * rotateX*rotateY*rotateZ*scale;
-
-	s_gData.m_uniforms.m_quadPoints[0] = lightTransform * glm::vec4(-1, 1, 0, 1);
-	s_gData.m_uniforms.m_quadPoints[1] = lightTransform * glm::vec4(1, 1, 0, 1);
-	s_gData.m_uniforms.m_quadPoints[2] = lightTransform * glm::vec4(1, -1, 0, 1);
-	s_gData.m_uniforms.m_quadPoints[3] = lightTransform * glm::vec4(-1, -1, 0, 1);
-
-	// set the light state
-	s_gData.m_uniforms.m_lightIntensity = l.intensity;
-	s_gData.m_uniforms.m_twoSided = l.twoSided;
-
-	s_gData.m_uniforms.submitPerLightUniforms();
-
-	return lightTransform;
-}
-
 int _main_(int _argc, char** _argv)
 {
 	Args args(_argc, _argv);
@@ -231,45 +206,13 @@ int _main_(int _argc, char** _argv)
 
 	s_programs.init();
 
-	bgfx::VertexLayout posLayout;
-	posLayout.begin();
-	posLayout.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
-	posLayout.end();
-
 	PosColorTexCoord0Vertex::init();
 
 	const uint32_t samplerFlags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP;
 
-	struct SceneSettings
-	{
-		float    m_diffColor[3];
-		float    m_roughness;
-		float    m_reflectance;
-		float    m_jitterAASigma;
-		uint32_t m_sampleCount;
-		uint32_t m_demoIdx;
-		uint32_t m_currLightIdx;
-		bool     m_useGT;
-		bool     m_showDiffColor;
-	};
-
-	SceneSettings settings;
-	settings.m_diffColor[0] = 1.0f;
-	settings.m_diffColor[1] = 1.0f;
-	settings.m_diffColor[2] = 1.0f;
-	settings.m_roughness = 1.0f;
-	settings.m_reflectance = 0.04f;
-	settings.m_currLightIdx = 0;
-	settings.m_jitterAASigma = 0.3f;
-	settings.m_sampleCount = 0;
-	settings.m_demoIdx = 1;
-	settings.m_useGT = false;
-	settings.m_showDiffColor = false;
-
-	float prevDiffColor[3] = { 0 };
-
 	s_rtColorBuffer.idx = bgfx::kInvalidHandle;
 	s_rtColorTexture.idx = bgfx::kInvalidHandle;
+	s_rtDepthTexture.idx = bgfx::kInvalidHandle;
 
 	float initialPrimPos[3] = { 0.0f, 60.0f, -60.0f };
 	bx::Vec3 initialSponzaPos = { 0.0f, 20.0f, 0.0f };
@@ -293,12 +236,8 @@ int _main_(int _argc, char** _argv)
 	while (!entry::processEvents(viewState.m_width, viewState.m_height, debug, reset, &mouseState))
 	{
 		Dolphin::RenderList rlist;
-		//Dolphin::RenderList llist;
-		LightData* lsettings;
 
 		rlist = Dolphin::SponzaDemo::renderListScene();
-		//llist = Dolphin::SponzaDemo::renderListLights();
-		lsettings = Dolphin::SponzaDemo::lightSettings();
 
 		bool rtRecreated = false;
 
@@ -318,20 +257,23 @@ int _main_(int _argc, char** _argv)
 			uint32_t w = viewState.m_width;
 			uint32_t h = viewState.m_height;
 
-			// Note: bgfx will cap the quality to the maximum supported
 			uint64_t rtFlags = BGFX_TEXTURE_RT;
 
 			s_rtColorTexture = bgfx::createTexture2D(uint16_t(w), uint16_t(h), false, 1, bgfx::TextureFormat::RGBA32F, rtFlags);
+			bgfx::setName(s_rtColorTexture, "Color Render Target");
+
+			s_rtDepthTexture = bgfx::createTexture2D(uint16_t(w), uint16_t(h), false, 1, bgfx::TextureFormat::D24S8, rtFlags);
+			bgfx::setName(s_rtDepthTexture, "Depth Stencil Render Target");
 			bgfx::TextureHandle colorTextures[] =
 			{
 				s_rtColorTexture,
-				bgfx::createTexture2D(uint16_t(w), uint16_t(h), false, 1, bgfx::TextureFormat::D24S8,   rtFlags)
+				s_rtDepthTexture
 			};
+
 			s_rtColorBuffer = bgfx::createFrameBuffer(BX_COUNTOF(colorTextures), colorTextures, true);
+			bgfx::setName(s_rtColorBuffer, "FrameBuffer");
+
 			rtRecreated = true;
-		}
-		{
-			//imguiEndFrame();
 		}
 
 		int64_t now = bx::getHPCounter();
@@ -352,12 +294,9 @@ int _main_(int _argc, char** _argv)
 		cameraGetViewMtx(viewState.m_view);
 
 		if (memcmp(viewState.m_oldView, viewState.m_view, sizeof(viewState.m_view))
-			|| memcmp(prevDiffColor, settings.m_diffColor, sizeof(settings.m_diffColor))
 			|| rtRecreated)
 		{
 			memcpy(viewState.m_oldView, viewState.m_view, sizeof(viewState.m_view));
-			memcpy(prevDiffColor, settings.m_diffColor, sizeof(settings.m_diffColor));
-			settings.m_sampleCount = 0;
 		}
 
 		// Grab camera position
@@ -394,11 +333,7 @@ int _main_(int _argc, char** _argv)
 			bgfx::setViewName(passViewID, "Color Pass");
 			bgfx::setViewRect(passViewID, 0, 0, uint16_t(viewState.m_width), uint16_t(viewState.m_height));
 
-			uint32_t flagsRT = BGFX_CLEAR_DEPTH;
-			if (settings.m_sampleCount == 0)
-			{
-				flagsRT |= BGFX_CLEAR_COLOR;
-			}
+			uint32_t flagsRT = BGFX_CLEAR_DEPTH | BGFX_CLEAR_COLOR;
 
 			bgfx::setViewClear(passViewID
 				, uint16_t(flagsRT)
@@ -409,12 +344,12 @@ int _main_(int _argc, char** _argv)
 			bgfx::touch(passViewID);
 
 			bgfx::setViewTransform(passViewID, viewState.m_view, proj);
+
 			for (uint64_t renderIdx = 0; renderIdx < rlist.count; ++renderIdx)
 			{
 				rlist.models[renderIdx].submit(s_gData, passViewID, s_programs.m_pbrShader, s_renderStates[RenderState::ColorPass]);
 			}
 
-			settings.m_sampleCount += NUM_SAMPLES;
 			++passViewID;
 		}
 

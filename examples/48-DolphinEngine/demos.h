@@ -17,8 +17,6 @@ namespace Dolphin
 		void shutdown();
 
 		RenderList renderListScene();
-		RenderList renderListLights();
-		struct LightData* lightSettings();
 	}
 }
 #endif
