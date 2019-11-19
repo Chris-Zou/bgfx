@@ -30,6 +30,8 @@
 
 namespace CSM
 {
+	#define SAMPLER_POINT_CLAMP (BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP)
+
 	static float s_texelHalf = 0.0f;
 
 	constexpr uint16_t THREAD_COUNT_PER_DIM = 8u;
@@ -538,6 +540,27 @@ namespace CSM
 			}
 
 			{
+				uint16_t dispatchX = getDispatchSize(uint16_t(m_width), THREAD_COUNT_PER_DIM);
+				uint16_t dispatchY = getDispatchSize(uint16_t(m_height), THREAD_COUNT_PER_DIM);
+
+				bindUniforms(m_depthReductionUniforms, uint16_t(m_width), uint16_t(m_height), proj);
+				bgfx::setTexture(0, m_depthReductionUniforms.u_depthSampler, m_pbrFBTextures[1], SAMPLER_POINT_CLAMP);
+				bgfx::setImage(1, m_depthReductionTargets[0], 0, bgfx::Access::Write, bgfx::TextureFormat::RG16F);
+				bgfx::dispatch(depthReductionPass, m_depthReductionInitial, dispatchX, dispatchY, 1);
+
+				for (size_t i = 1; i < m_depthReductionTargets.size(); ++i)
+				{
+					bindUniforms(m_depthReductionUniforms, dispatchX, dispatchY, proj);
+					dispatchX = getDispatchSize(dispatchX, THREAD_COUNT_PER_DIM);
+					dispatchY = getDispatchSize(dispatchY, THREAD_COUNT_PER_DIM);
+
+					bgfx::setImage(0, m_depthReductionTargets[i - 1], 0, bgfx::Access::Read, bgfx::TextureFormat::RG16F);
+					bgfx::setImage(1, m_depthReductionTargets[i], 0, bgfx::Access::Write, bgfx::TextureFormat::RG16F);
+					bgfx::dispatch(depthReductionPass, m_depthReductionGeneral, dispatchX, dispatchY, 1);
+				}
+			}
+
+			{
 				bgfx::blit(shadowPass[0], m_cpuReadableDepth, 0, 0, m_depthReductionTargets[m_depthReductionTargets.size() - 1], 0, 0);
 				bgfx::readTexture(m_cpuReadableDepth, m_depthData, 0);
 				float minDepth = bx::halfToFloat(m_depthData[0]);
@@ -551,7 +574,165 @@ namespace CSM
 
 				float depthRatio = bx::pow(maxWorldDepth / minWorldDepth, 1.0f / NUM_CASCADES);
 				glm::vec2 cascadeMinMax[NUM_CASCADES] = {};
+				cascadeMinMax[0] = { minWorldDepth, minWorldDepth * depthRatio };
+				for (int cascadeIdx = 1; cascadeIdx < NUM_CASCADES; ++cascadeIdx)
+				{
+					cascadeMinMax[cascadeIdx] = {cascadeMinMax[cascadeIdx -1].y, cascadeMinMax[cascadeIdx-1].y * depthRatio};
+				}
+
+				for (int casIdx = 0; casIdx < NUM_CASCADES; ++casIdx)
+				{
+					m_directionalLight.m_cascadeBounds[casIdx].z = (proj[10] * cascadeMinMax[casIdx].y + proj[14]) / (proj[11] * cascadeMinMax[casIdx].y);
+				}
+
+				float clipNear = m_caps->homogeneousDepth ? -1.0f : 0.0f;
+				glm::vec4 clipFrustum[] =
+				{
+					glm::vec4(-1.0f,  1.0f, clipNear, 1.0f), // top left near
+					glm::vec4(1.0f,  1.0f, clipNear, 1.0f), // top right near
+					glm::vec4(1.0f, -1.0f, clipNear, 1.0f), // bottom right near
+					glm::vec4(-1.0f, -1.0f, clipNear, 1.0f), // bottom left near
+					glm::vec4(-1.0f,  1.0f, 1.0f, 1.0f), // top left far
+					glm::vec4(1.0f,  1.0f, 1.0f, 1.0f), // top right far
+					glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), // bottom right far
+					glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), // botom left far
+				};
+
+				for (int casIdx = 0; casIdx < NUM_CASCADES; ++casIdx)
+				{
+					float cascMin = (cascadeMinMax[casIdx].x - NEAR_PLANE) / (FAR_PLANE - NEAR_PLANE);
+					float cascMax = (cascadeMinMax[casIdx].y - NEAR_PLANE) / (FAR_PLANE - NEAR_PLANE);
+
+					glm::vec4 frustumCorners[8];
+					for (size_t i = 0; i < 8; ++i)
+					{
+						frustumCorners[i] = invViewProj * clipFrustum[i];
+						frustumCorners[i] /= frustumCorners[i].w;
+					}
+
+					glm::vec4 center{ 0.0f };
+					for (size_t i = 0; i < 4; ++i)
+					{
+						glm::vec4 cornerRay = frustumCorners[i + 4] - frustumCorners[i];
+						frustumCorners[i] = cascMin * cornerRay + frustumCorners[i];
+						frustumCorners[i + 4] = cascMax * cornerRay + frustumCorners[i];
+						center += frustumCorners[i] + frustumCorners[i + 4];
+					}
+					center /= 8.0f;
+
+					glm::vec3 up = bx::abs(m_directionalLight.m_direction.y) != 1.0f ? glm::vec3(0.0f, 1.0f, 0.0f) : glm::vec3(1.0f, 0.0f, 0.0f);
+					glm::mat4 lightView = glm::lookAt(glm::vec3(center - m_directionalLight.m_direction), glm::vec3(center), up);
+
+					for (size_t i = 0; i < BX_COUNTOF(frustumCorners); ++i)
+					{
+						frustumCorners[i] = lightView * frustumCorners[i];
+					}
+
+					glm::vec4 min = frustumCorners[0];
+					glm::vec4 max = frustumCorners[0];
+
+					for (size_t i = 0; i < BX_COUNTOF(frustumCorners); ++i)
+					{
+						min = glm::min(min, frustumCorners[i]);
+						max = glm::max(max, frustumCorners[i]);
+					}
+
+					glm::vec4 bbMin = glm::vec4(m_model.boundingBox.m_min, 1.0f);
+					glm::vec4 bbMax = glm::vec4(m_model.boundingBox.m_max, 1.0f);
+					glm::vec4 bbCorners[8] = {
+						{bbMin.x, bbMax.y, bbMax.z, 1.0f },
+						{bbMax.x, bbMax.y, bbMax.z, 1.0f },
+						{bbMax.x, bbMin.y, bbMax.z, 1.0f },
+						{bbMin.x, bbMin.y, bbMax.z, 1.0f },
+						{bbMin.x, bbMax.y, bbMin.z, 1.0f },
+						{bbMax.x, bbMax.y, bbMin.z, 1.0f },
+						{bbMax.x, bbMin.y, bbMin.z, 1.0f },
+						{bbMin.x, bbMin.y, bbMin.z, 1.0f },
+					};
+
+					bbMin = lightView * bbCorners[0];
+					bbMax = lightView * bbCorners[0];
+					for (size_t i = 0; i < BX_COUNTOF(bbCorners); ++i)
+					{
+						glm::vec4 bbCornerLightSpace = lightView * bbCorners[i];
+						bbMin = glm::min(bbCornerLightSpace, bbMin);
+						bbMax = glm::max(bbCornerLightSpace, bbMax);
+					}
+
+					min.x = bx::max(bbMin.x, min.x);
+					max.x = bx::max(bbMax.x, max.x);
+					min.y = bx::max(bbMin.y, min.y);
+					max.y = bx::min(bbMax.y, max.y);
+					min.z = bx::min(bbMin.z, min.z);
+					max.z = bx::max(bbMax.z, max.z);
+
+					uint64_t stateShadowMapping = 0
+						| BGFX_STATE_WRITE_Z
+						| BGFX_STATE_CULL_CW
+						| BGFX_STATE_DEPTH_TEST_LESS;
+
+					float orthoProjectionRaw[16];
+					bx::mtxOrtho(orthoProjectionRaw, min.x, max.x, min.y, max.y, max.z, min.z, 0.0f, m_caps->homogeneousDepth);
+					glm::mat4 orthoProjection = glm::make_mat4(orthoProjectionRaw);
+
+					m_directionalLight.m_cascadeBounds[casIdx].x = max.x - min.x;
+					m_directionalLight.m_cascadeBounds[casIdx].y = max.y - min.y;
+
+					lightView = glm::lookAt(glm::vec3(center - m_directionalLight.m_direction), glm::vec3(center), up);
+
+					bgfx::setViewTransform(shadowPass[casIdx], glm::value_ptr(lightView), glm::value_ptr(orthoProjection));
+					m_directionalLight.m_cascadeTransforms[casIdx] = orthoProjection * lightView;
+
+					for (size_t i = 0; i < m_model.opaqueMeshes.meshes.size(); ++i)
+					{
+						const auto& mesh = m_model.opaqueMeshes.meshes[i];
+						const auto& transform = m_model.opaqueMeshes.transforms[i];
+
+						bgfx::setState(stateShadowMapping);
+						bgfx::setTransform(glm::value_ptr(transform));
+						mesh.setBuffers();
+						bgfx::submit(shadowPass[casIdx], m_directionalShadowMapProgram);
+					}
+				}
 			}
+
+			uint64_t stateOpaque = 0
+				| BGFX_STATE_WRITE_RGB
+				| BGFX_STATE_WRITE_A
+				| BGFX_STATE_CULL_CCW
+				| BGFX_STATE_MSAA
+				| BGFX_STATE_DEPTH_TEST_LEQUAL;
+
+			uint64_t stateTransparent = 0
+				| BGFX_STATE_WRITE_RGB
+				| BGFX_STATE_WRITE_A
+				| BGFX_STATE_DEPTH_TEST_LESS
+				| BGFX_STATE_CULL_CCW
+				| BGFX_STATE_MSAA
+				| BGFX_STATE_BLEND_ALPHA;
+
+			renderMeshes(m_model.opaqueMeshes, cameraPos, stateOpaque, m_pbrShader, meshPass);
+
+			renderMeshes(m_model.maskedMeshes, cameraPos, stateOpaque, m_pbrShaderWithMasking, meshPass);
+
+			renderMeshes(m_model.transparentMeshes, cameraPos, stateTransparent, m_pbrShader, meshPass);
+
+			viewCount = m_toneMapPass.render(m_pbrFBTextures[0], m_toneMapParams, deltaTime, viewCount);
+
+			bgfx::ViewId debugShadowPass = viewCount++;
+			bgfx::setViewRect(debugShadowPass, 0, uint16_t(m_height) - 256u, 256, 256);
+
+			float debugProjection[16];
+			bx::mtxOrtho(debugProjection, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, m_caps->homogeneousDepth);
+			bgfx::setViewTransform(debugShadowPass, nullptr, debugProjection);
+			bgfx::setTexture(0, m_shadowMapDebugSampler, m_shadowMaps[0], BGFX_SAMPLER_UVW_CLAMP);
+			bgfx::setState(BGFX_STATE_WRITE_RGB);
+			Dolphin::ToneMapping::setScreenSpaceQuad(m_shadowMapWidth, m_shadowMapWidth, m_caps->originBottomLeft);
+			bgfx::submit(debugShadowPass, m_drawDepthDebugProgram);
+
+			bgfx::frame();
+
+			return true;
 		}
 
 	public:
