@@ -24,7 +24,8 @@ namespace Dolphin
 		}
 
 		for (const bgfx::TextureHandle texture : model.textures) {
-			bgfx::destroy(texture);
+			if(bgfx::isValid(texture))
+				bgfx::destroy(texture);
 		}
 	}
 }

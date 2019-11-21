@@ -421,8 +421,6 @@ namespace Dolphin
 
 		}
 
-		
-
 		void compileShaders()
 		{
 			m_prepassProgram = compileShader("../44-forward-shading/vs_z_prepass.sc", "../44-forward-shading/fs_z_prepass.sc", "../44-forward-shading/varying.def.sc");

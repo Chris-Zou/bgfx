@@ -236,6 +236,34 @@ namespace CSM
 		{
 		}
 
+		bgfx::ProgramHandle compileSingleProgram(const std::string& prefix, const std::string& vsName, const std::string& fsName)
+		{
+			std::string vsPath = prefix + vsName + ".sc";
+			std::string fsPath = prefix + fsName + ".sc";
+			std::string defPath = prefix + "varying.def.sc";
+
+			return Dolphin::compileGraphicsShader(vsPath.c_str(), fsPath.c_str(), defPath.c_str());
+		}
+
+		bgfx::ProgramHandle compileSigleComputeProgram(const std::string& prefix, const std::string& csName)
+		{
+			std::string csPath = prefix + csName + ".sc";
+			return Dolphin::compileComputeShader(csPath.c_str());
+		}
+
+		void compileNeededShaders()
+		{
+			std::string prefix("../46-shadow-mapping/");
+
+			m_directionalShadowMapProgram = compileSingleProgram(prefix, "vs_directional_shadowmap", "fs_directional_shadowmap");
+			m_prepassProgram = compileSingleProgram(prefix, "vs_z_prepass", "fs_z_prepass");
+			m_pbrShader = compileSingleProgram(prefix, "vs_shadowed_mesh", "fs_shadowed_mesh");
+			m_pbrShaderWithMasking = compileSingleProgram(prefix, "vs_shadowed_mesh", "fs_shadowed_mesh_masked");
+			m_depthReductionInitial = compileSigleComputeProgram(prefix, "cs_depth_reduction_initial");
+			m_depthReductionGeneral = compileSigleComputeProgram(prefix, "cs_depth_reduction_general");
+			m_drawDepthDebugProgram = compileSingleProgram(prefix, "vs_texture_pass_through", "fs_texture_pass_through");
+		}
+
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
 		{
 			Args args(_argc, _argv);
@@ -265,13 +293,15 @@ namespace CSM
 				return;
 			}
 
-			m_directionalShadowMapProgram = loadProgram("vs_directional_shadowmap", "fs_directional_shadowmap");
+			compileNeededShaders();
+
+			/*m_directionalShadowMapProgram = loadProgram("vs_directional_shadowmap", "fs_directional_shadowmap");
 			m_prepassProgram = loadProgram("vs_z_prepass", "fs_z_prepass");
 			m_pbrShader = loadProgram("vs_shadowed_mesh", "fs_shadowed_mesh");
 			m_pbrShaderWithMasking = loadProgram("vs_shadowed_mesh", "fs_shadowed_mesh_masked");
 			m_depthReductionInitial = loadProgram("cs_depth_reduction_initial", nullptr);
 			m_depthReductionGeneral = loadProgram("cs_depth_reduction_general", nullptr);
-			m_drawDepthDebugProgram = loadProgram("vs_texture_pass_through", "fs_texture_pass_through");
+			m_drawDepthDebugProgram = loadProgram("vs_texture_pass_through", "fs_texture_pass_through");*/
 
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
@@ -298,6 +328,8 @@ namespace CSM
 			}
 
 			m_cpuReadableDepth = bgfx::createTexture2D(1, 1, false, 1, bgfx::TextureFormat::RG16F, BGFX_TEXTURE_BLIT_DST | BGFX_TEXTURE_READ_BACK);
+
+			m_toneMapPass.init(m_caps);
 
 			imguiCreate();
 
