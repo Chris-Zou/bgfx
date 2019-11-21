@@ -143,6 +143,8 @@ namespace Atmosphere
 			m_vExtinctionM = m_vMieSct;
 
 			m_fMieG = 0.76f;
+
+			m_lightScale = 1.0f;
 		}
 #pragma region ShaderCompiler
 		bgfx::ProgramHandle compileShader(const char* vsCode, const char* fsCode, const char* defCode)
@@ -229,7 +231,7 @@ namespace Atmosphere
 			imguiCreate();
 
 			m_aCameraPos[0] = 0.0f;
-			m_aCameraPos[1] = -10.0f;
+			m_aCameraPos[1] = -5.0f;
 			m_aCameraPos[2] = 0.0f;
 
 			cameraCreate();
@@ -401,7 +403,11 @@ namespace Atmosphere
 
 			ImGui::SliderFloat3("CamHeight", m_aCameraPos, -100.0f, 100.0f);
 			ImGui::SliderFloat3("LightDir", m_vLightDir, -1.0f, 1.0f);
-			ImGui::SliderFloat3("InLight", m_vIncomingLight, 0.0f, 10.0f);
+			ImGui::SliderFloat("LightIntensity", &m_lightScale, 0.1f, 10.0f);
+			m_vIncomingLight[0] = m_lightScale;
+			m_vIncomingLight[1] = m_lightScale;
+			m_vIncomingLight[2] = m_lightScale;
+			ImGui::SliderFloat("MieG", &m_fMieG, 0.01f, 2.0f);
 
 			ImGui::End();
 
@@ -420,6 +426,8 @@ namespace Atmosphere
 
 			float proj[16];
 			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, m_caps->homogeneousDepth);
+
+			cameraUpdate(0.1f * deltaTime, m_mouseState);
 
 			float view[16];
 			cameraGetViewMtx(view);
@@ -524,6 +532,7 @@ namespace Atmosphere
 		bx::Vec3 m_vExtinctionM;
 
 		float m_vIncomingLight[3];
+		float m_lightScale;
 		float m_vLightDir[3];
 
 		float m_aParams[4];
