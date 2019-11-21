@@ -146,6 +146,25 @@ namespace Atmosphere
 
 			m_lightScale = 1.0f;
 		}
+
+		void updateRayleighAndMieCoef()
+		{
+			m_vScatteringR.x = m_vRayleighSct.x * m_fRayleighScatterCoef;
+			m_vScatteringR.y = m_vRayleighSct.y * m_fRayleighScatterCoef;
+			m_vScatteringR.z = m_vRayleighSct.z * m_fRayleighScatterCoef;
+
+			m_vExtinctionR.x = m_vRayleighSct.x * m_fRayleighExtinctionCoef;
+			m_vExtinctionR.y = m_vRayleighSct.y * m_fRayleighExtinctionCoef;
+			m_vExtinctionR.z = m_vRayleighSct.z * m_fRayleighExtinctionCoef;
+
+			m_vScatteringM.x = m_vMieSct.x * m_fMieScatterCoef;
+			m_vScatteringM.y = m_vMieSct.y * m_fMieScatterCoef;
+			m_vScatteringM.z = m_vMieSct.z * m_fMieScatterCoef;
+
+			m_vExtinctionM.x = m_vMieSct.x * m_fMieExtinctionCoef;
+			m_vExtinctionM.y = m_vMieSct.y * m_fMieExtinctionCoef;
+			m_vExtinctionM.z = m_vMieSct.z * m_fMieExtinctionCoef;
+		}
 #pragma region ShaderCompiler
 		bgfx::ProgramHandle compileShader(const char* vsCode, const char* fsCode, const char* defCode)
 		{
@@ -408,6 +427,13 @@ namespace Atmosphere
 			m_vIncomingLight[1] = m_lightScale;
 			m_vIncomingLight[2] = m_lightScale;
 			ImGui::SliderFloat("MieG", &m_fMieG, 0.01f, 2.0f);
+
+			ImGui::SliderFloat("RayScatter", &m_fRayleighScatterCoef, 0.1f, 5.0f);
+			ImGui::SliderFloat("MieScatter", &m_fMieScatterCoef, 0.1f, 5.0f);
+			ImGui::SliderFloat("RayExtinction", &m_fRayleighExtinctionCoef, 0.1f, 5.0f);
+			ImGui::SliderFloat("MieExtinction", &m_fMieExtinctionCoef, 0.1f, 5.0f);
+
+			updateRayleighAndMieCoef();
 
 			ImGui::End();
 
