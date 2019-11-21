@@ -3,14 +3,6 @@
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
- /*
-  * Reference(s):
-  *
-  * - Adaptive GPU Tessellation with Compute Shaders by Jad Khoury, Jonathan Dupuy, and Christophe Riccio
-  *   http://onrendering.com/data/papers/isubd/isubd.pdf
-  *   https://github.com/jdupuy/opengl-framework/tree/master/demo-isubd-terrain#implicit-subdivision-on-the-gpu
-  */
-
 #include <bx/allocator.h>
 #include <bx/debug.h>
 #include <bx/file.h>
@@ -295,6 +287,8 @@ namespace Atmosphere
 			m_vLightDir[1] = 0.0f;
 			m_vLightDir[2] = 1.0f;
 
+			m_vLightDir[3] = 0.76f;
+
 			m_toneMapParams.m_width = m_width;
 			m_toneMapParams.m_height = m_height;
 			m_toneMapParams.m_originBottomLeft = m_caps->originBottomLeft;
@@ -427,7 +421,7 @@ namespace Atmosphere
 			m_vIncomingLight[1] = m_lightScale;
 			m_vIncomingLight[2] = m_lightScale;
 			ImGui::SliderFloat("MieG", &m_fMieG, 0.01f, 2.0f);
-
+			m_vLightDir[3] = m_fMieG;
 			ImGui::SliderFloat("RayScatter", &m_fRayleighScatterCoef, 0.1f, 5.0f);
 			ImGui::SliderFloat("MieScatter", &m_fMieScatterCoef, 0.1f, 5.0f);
 			ImGui::SliderFloat("RayExtinction", &m_fRayleighExtinctionCoef, 0.1f, 5.0f);
@@ -559,7 +553,7 @@ namespace Atmosphere
 
 		float m_vIncomingLight[3];
 		float m_lightScale;
-		float m_vLightDir[3];
+		float m_vLightDir[4]; // m_vLightDir[3] is MieG
 
 		float m_aParams[4];
 

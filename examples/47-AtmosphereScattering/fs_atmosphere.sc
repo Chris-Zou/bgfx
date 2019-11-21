@@ -24,11 +24,16 @@ uniform vec3 ScatteringM;
 uniform vec3 ExtinctionR;
 uniform vec3 ExtinctionM;
 
-uniform float MieG;
 uniform vec4 IncomingLight;
-uniform vec3 LightDir;
+uniform vec4 LightDir;
 
 uniform vec3 CameraPos;
+
+#if 0
+uniform float MieG;
+#else
+#define MieG LightDir.w;
+#endif
 
 vec2 RaySphereIntersection(vec3 rayOrigin, vec3 rayDir, vec3 sphereCenter, float sphereRadius)
 {

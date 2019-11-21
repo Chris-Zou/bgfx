@@ -295,14 +295,6 @@ namespace CSM
 
 			compileNeededShaders();
 
-			/*m_directionalShadowMapProgram = loadProgram("vs_directional_shadowmap", "fs_directional_shadowmap");
-			m_prepassProgram = loadProgram("vs_z_prepass", "fs_z_prepass");
-			m_pbrShader = loadProgram("vs_shadowed_mesh", "fs_shadowed_mesh");
-			m_pbrShaderWithMasking = loadProgram("vs_shadowed_mesh", "fs_shadowed_mesh_masked");
-			m_depthReductionInitial = loadProgram("cs_depth_reduction_initial", nullptr);
-			m_depthReductionGeneral = loadProgram("cs_depth_reduction_general", nullptr);
-			m_drawDepthDebugProgram = loadProgram("vs_texture_pass_through", "fs_texture_pass_through");*/
-
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
 			CSM::init(m_pbrUniforms);
