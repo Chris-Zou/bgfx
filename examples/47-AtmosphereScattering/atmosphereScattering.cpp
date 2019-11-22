@@ -15,6 +15,8 @@
 #include "imgui/imgui.h"
 #include <bx/rng.h>
 
+#include <debugdraw/debugdraw.h>
+
 #include <glm/glm.hpp>
 #include <glm/matrix.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -117,7 +119,10 @@ namespace Atmosphere
 			m_fAtmosphereHeight = 80000.0f;
 			m_fSunIntensity = 1.0f;
 			m_fDistanceScale = 1.0f;
-			m_fDensityHeight = 1.0f;
+			m_fDensityHeight[0] = 7994.0f;
+			m_fDensityHeight[1] = 1200.0f;
+			m_fDensityHeight[2] = 0.0f;
+			m_fDensityHeight[3] = 0.0f;
 
 			m_vDensityScale = bx::Vec3(7994.0f, 1200.0f, 0);
 			m_vRayleighSct = bx::Vec3(5.8f * 0.000001f, 13.5f * 0.000001f, 33.1f * 0.000001f);
@@ -242,7 +247,7 @@ namespace Atmosphere
 			imguiCreate();
 
 			m_aCameraPos[0] = 0.0f;
-			m_aCameraPos[1] = -5.0f;
+			m_aCameraPos[1] = 10.0f;
 			m_aCameraPos[2] = 0.0f;
 
 			cameraCreate();
@@ -399,8 +404,6 @@ namespace Atmosphere
 				, uint16_t(m_height)
 			);
 
-			showExampleDialog(this);
-
 			ImGui::SetNextWindowPos(
 				ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f)
 				, ImGuiCond_FirstUseEver
@@ -414,7 +417,7 @@ namespace Atmosphere
 				, 0
 			);
 
-			ImGui::SliderFloat3("CamHeight", m_aCameraPos, -100.0f, 100.0f);
+			ImGui::SliderFloat3("CamHeight", m_aCameraPos, -10000.0f, 10000.0f);
 			ImGui::SliderFloat3("LightDir", m_vLightDir, -1.0f, 1.0f);
 			ImGui::SliderFloat("LightIntensity", &m_lightScale, 0.1f, 10.0f);
 			m_vIncomingLight[0] = m_lightScale;
@@ -426,6 +429,7 @@ namespace Atmosphere
 			ImGui::SliderFloat("MieScatter", &m_fMieScatterCoef, 0.1f, 5.0f);
 			ImGui::SliderFloat("RayExtinction", &m_fRayleighExtinctionCoef, 0.1f, 5.0f);
 			ImGui::SliderFloat("MieExtinction", &m_fMieExtinctionCoef, 0.1f, 5.0f);
+			ImGui::SliderFloat("SunIntensity", &m_fSunIntensity, 0.1f, 10.0f);
 
 			updateRayleighAndMieCoef();
 
@@ -436,6 +440,11 @@ namespace Atmosphere
 			bgfx::setViewFrameBuffer(0, m_pbrFrameBuffer);
 
 			bgfx::touch(0);
+
+			DebugDrawEncoder dde;
+
+			dde.begin(0);
+			dde.drawAxis(0.0f, 0.0f, 0.0f);
 
 			int64_t now = bx::getHPCounter();
 			static int64_t last = now;
@@ -535,7 +544,7 @@ namespace Atmosphere
 		float m_fAtmosphereHeight;
 		float m_fSunIntensity;
 		float m_fDistanceScale;
-		float m_fDensityHeight;
+		float m_fDensityHeight[4];
 
 		float m_fRayleighScatterCoef;
 		float m_fRayleighExtinctionCoef;

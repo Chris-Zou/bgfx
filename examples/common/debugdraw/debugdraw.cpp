@@ -2003,7 +2003,7 @@ struct DebugDrawEncoderImpl
 			drawCylinder(from, mid, _thickness, false);
 			drawCone(mid, to, _thickness);
 
-			setColor(Axis::Y == _highlight ? 0xff00ffff : 0xff00ff00);
+			setColor(Axis::Y == _highlight ? 0xff00ffff : 0xff0000ff);
 			mid = { _x, _y + _len - _thickness, _z };
 			to  = { _x, _y + _len,              _z };
 			drawCylinder(from, mid, _thickness, false);
