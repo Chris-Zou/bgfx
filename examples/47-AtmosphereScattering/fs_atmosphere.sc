@@ -178,7 +178,7 @@ vec4 IntegrateInscattering(vec3 rayStart, vec3 rayDir, float rayLength, vec3 pla
 
 	ApplyPhaseFunction(scatterR, scatterM, dot(rayDir, -lightDir.xyz));
 	vec3 lightInscatter = (scatterR * ScatteringR + scatterM * ScatteringM) * IncomingLight.xyz;
-	lightInscatter += RenderSun(m, dot(rayDir, -lightDir.xyz)) * SunIntensity;
+	lightInscatter += RenderSun(m, clampDot(rayDir, -lightDir.xyz)) * SunIntensity;
 	vec3 lightExtinction = exp(-(densityCP.x * ExtinctionR + densityCP.y * ExtinctionM));
 
 	extinction = vec4(lightExtinction, 0);
