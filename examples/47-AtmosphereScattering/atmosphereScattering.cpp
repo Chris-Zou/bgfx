@@ -453,6 +453,16 @@ namespace Atmosphere
 			const double freq = double(bx::getHPFrequency());
 			const float deltaTime = (float)(frameTime / freq);
 
+			//if (m_vLightDir[1] >= -1.0f)
+			//{
+			//	m_vLightDir[1] -= deltaTime * 0.02f;
+			//}
+
+			if (m_aCameraPos[1] < 10000.0f)
+			{
+				m_aCameraPos[1] += deltaTime * 100.0f;
+			}
+
 			float proj[16];
 			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, m_caps->homogeneousDepth);
 

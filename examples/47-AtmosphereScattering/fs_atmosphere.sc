@@ -204,6 +204,8 @@ void main()
 	rayLength = intersection.y;
 
 	intersection = RaySphereIntersection(rayStart, rayDir, planetCenter, PlanetRadius);
+
+	vec4 landColor = vec4(0.1f, 0.1f, 0.1f, 1.0f);
 	if(intersection.x > 0)
 	{
 		rayLength = min(rayLength, intersection.x);
