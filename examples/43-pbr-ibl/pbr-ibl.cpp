@@ -34,7 +34,7 @@ namespace ibl
 	public:
 		void init()
 		{
-			const std::string brdfLutShaderName = "cs_brdf_lut.sc";
+			const std::string brdfLutShaderName = "../43-pbr-ibl/cs_brdf_lut.sc";
 			m_brdfProgram = Dolphin::compileComputeShader(brdfLutShaderName.c_str());
 
 			uint64_t lutFlags = BGFX_TEXTURE_COMPUTE_WRITE | BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP;
@@ -81,8 +81,8 @@ namespace ibl
 	public:
 		void init()
 		{
-			m_prefilteringProgram = Dolphin::compileComputeShader("cs_prefilter_env_map.sc");
-			m_irradianceProgram = Dolphin::compileComputeShader("cs_irradiance.sc");
+			m_prefilteringProgram = Dolphin::compileComputeShader("../43-pbr-ibl/cs_prefilter_env_map.sc");
+			m_irradianceProgram = Dolphin::compileComputeShader("../43-pbr-ibl/cs_irradiance.sc");
 
 			uint64_t flags = BGFX_TEXTURE_COMPUTE_WRITE;
 			u_sourceCubeMap = bgfx::createUniform("u_source", bgfx::UniformType::Sampler);
@@ -284,9 +284,9 @@ namespace ibl
 				return;
 			}
 
-			m_skyboxProgram = loadProgram("vs_skybox", "fs_skybox");
-			m_pbrIblProgram = loadProgram("vs_pbr_ibl", "fs_pbr_ibl");
-			m_pbrIblProgramWithMasking = loadProgram("vs_pbr_ibl", "fs_pbr_ibl_with_masking");
+			m_skyboxProgram = Dolphin::compileGraphicsShader("../43-pbr-ibl/vs_skybox.sc", "../43-pbr-ibl/fs_skybox.sc", "../43-pbr-ibl/varying.def.sc");
+			m_pbrIblProgram = Dolphin::compileGraphicsShader("../43-pbr-ibl/vs_pbr_ibl.sc", "../43-pbr-ibl/fs_pbr_ibl.sc", "../43-pbr-ibl/varying.def.sc");
+			m_pbrIblProgramWithMasking = Dolphin::compileGraphicsShader("../43-pbr-ibl/vs_pbr_ibl.sc", "../43-pbr-ibl/fs_pbr_ibl_with_masking.sc", "../43-pbr-ibl/varying.def.sc");
 
 			ibl::init(m_pbrUniforms);
 			ibl::init(m_sceneUniforms);
