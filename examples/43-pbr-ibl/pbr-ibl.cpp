@@ -119,6 +119,12 @@ namespace ibl
 				bgfx::setImage(1, m_filteredCubeMap, uint8_t(mipLevel), bgfx::Access::Write, bgfx::TextureFormat::RGBA16F);
 				bgfx::dispatch(view, m_prefilteringProgram, mipWidth / threadCount, mipWidth / threadCount, 1);
 			}
+
+			bgfx::setTexture(0, u_sourceCubeMap, m_sourceCubeMap);
+			bgfx::setImage(1, m_irradianceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::RGBA16F);
+			bgfx::dispatch(view, m_irradianceProgram, m_irradianceMapSize / threadCount, m_irradianceMapSize / threadCount, 1);
+
+			m_isRendered = true;
 		}
 
 		void destroy()
