@@ -417,7 +417,7 @@ namespace Atmosphere
 				, 0
 			);
 
-			ImGui::SliderFloat3("CamHeight", m_aCameraPos, 1.0f, 10000.0f);
+			ImGui::SliderFloat3("CamHeight", m_aCameraPos, 1.0f, 100000.0f);
 			ImGui::SliderFloat3("LightDir", m_vLightDir, -1.0f, 1.0f);
 			ImGui::SliderFloat("LightIntensity", &m_lightScale, 0.1f, 10.0f);
 			m_vIncomingLight[0] = m_lightScale;
