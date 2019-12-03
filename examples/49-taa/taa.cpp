@@ -118,7 +118,8 @@ namespace TAA
 		bgfx::destroy(uniforms.u_normalTransform);
 	}
 
-	void bindUniforms(const PBRShaderUniforms& uniforms, const Dolphin::PBRMaterial& material, const glm::mat4& transform) {
+	void bindUniforms(const PBRShaderUniforms& uniforms, const Dolphin::PBRMaterial& material, const glm::mat4& transform)
+	{
 		bgfx::setTexture(0, uniforms.s_baseColor, material.baseColorTexture);
 		bgfx::setTexture(1, uniforms.s_normal, material.normalTexture);
 		bgfx::setTexture(2, uniforms.s_metallicRoughness, material.metallicRoughnessTexture);
@@ -134,7 +135,8 @@ namespace TAA
 		bgfx::setUniform(uniforms.u_normalTransform, glm::value_ptr(normalTransform));
 	}
 
-	struct DeferredSceneUniforms {
+	struct DeferredSceneUniforms
+	{
 		bgfx::UniformHandle s_baseColorRoughness = BGFX_INVALID_HANDLE;
 		bgfx::UniformHandle s_normalMetallic = BGFX_INVALID_HANDLE;
 		bgfx::UniformHandle s_emissiveOcclusion = BGFX_INVALID_HANDLE;
@@ -142,7 +144,8 @@ namespace TAA
 		bgfx::UniformHandle u_cameraPos = BGFX_INVALID_HANDLE;
 	};
 
-	void init(DeferredSceneUniforms& uniforms) {
+	void init(DeferredSceneUniforms& uniforms)
+	{
 		uniforms.s_baseColorRoughness = bgfx::createUniform("s_baseColorRoughness", bgfx::UniformType::Sampler);
 		uniforms.s_normalMetallic = bgfx::createUniform("s_normalMetallic", bgfx::UniformType::Sampler);
 		uniforms.s_emissiveOcclusion = bgfx::createUniform("s_emissiveOcclusion", bgfx::UniformType::Sampler);
@@ -150,7 +153,8 @@ namespace TAA
 		uniforms.u_cameraPos = bgfx::createUniform("u_cameraPos", bgfx::UniformType::Vec4);
 	}
 
-	void destroy(DeferredSceneUniforms& uniforms) {
+	void destroy(DeferredSceneUniforms& uniforms)
+	{
 		bgfx::destroy(uniforms.s_baseColorRoughness);
 		bgfx::destroy(uniforms.s_normalMetallic);
 		bgfx::destroy(uniforms.s_emissiveOcclusion);
@@ -158,19 +162,37 @@ namespace TAA
 		bgfx::destroy(uniforms.u_cameraPos);
 	}
 
-	struct PointLightUniforms {
+	struct PointLightUniforms
+	{
 		bgfx::UniformHandle u_lightColorIntensity = BGFX_INVALID_HANDLE;
 		bgfx::UniformHandle u_lightPosRadius = BGFX_INVALID_HANDLE;
 	};
 
-	void init(PointLightUniforms& uniforms) {
+	void init(PointLightUniforms& uniforms)
+	{
 		uniforms.u_lightColorIntensity = bgfx::createUniform("u_lightColorIntensity", bgfx::UniformType::Vec4);
 		uniforms.u_lightPosRadius = bgfx::createUniform("u_lightPosRadius", bgfx::UniformType::Vec4);
 	}
 
-	void destroy(PointLightUniforms& uniforms) {
+	void destroy(PointLightUniforms& uniforms)
+	{
 		bgfx::destroy(uniforms.u_lightColorIntensity);
 		bgfx::destroy(uniforms.u_lightPosRadius);
+	}
+
+	bgfx::ProgramHandle compileSingleGraphicsProgram(const std::string& prefix, const std::string& vsName, const std::string& fsName)
+	{
+		std::string vsPath = prefix + vsName + ".sc";
+		std::string fsPath = prefix + fsName + ".sc";
+		std::string defPath = prefix + "varying.def.sc";
+
+		return Dolphin::compileGraphicsShader(vsPath.c_str(), fsPath.c_str(), defPath.c_str());
+	}
+
+	bgfx::ProgramHandle compileSigleComputeProgram(const std::string& prefix, const std::string& csName)
+	{
+		std::string csPath = prefix + csName + ".sc";
+		return Dolphin::compileComputeShader(csPath.c_str());
 	}
 
 	class ExampleTAA : public entry::AppI
@@ -179,6 +201,18 @@ namespace TAA
 		ExampleTAA(const char* _name, const char* _description, const char* _url)
 			: entry::AppI(_name, _description, _url)
 		{
+		}
+
+		void compileNeededShaders()
+		{
+			std::string prefix("../49-taa/");
+
+			m_writeToRTProgram = compileSingleGraphicsProgram(prefix, "vs_deferred_pbr", "fs_deferred_pbr");
+			m_lightStencilProgram = compileSingleGraphicsProgram(prefix, "vs_light_stencil.sc", "fs_light_stencil.sc");
+			m_pointLightVolumeProgram = compileSingleGraphicsProgram(prefix, "vs_point_light_volume", "fs_point_light_volume");
+			m_emissivePassProgram = compileSingleGraphicsProgram(prefix, "vs_emissive_pass", "fs_emissive_pass");
+
+			m_copyHistoryBufferProgram = compileSingleGraphicsProgram(prefix, "vs_fullscreen", "fs_copy_buffer");
 		}
 
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
@@ -211,14 +245,13 @@ namespace TAA
 				return;
 			}
 
-			m_writeToRTProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_deferred_pbr.sc", "../45-deferred-shading/fs_deferred_pbr.sc", "../45-deferred-shading/varying.def.sc");
-			m_lightStencilProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_light_stencil.sc", "../45-deferred-shading/fs_light_stencil.sc", "../45-deferred-shading/varying.def.sc");
-			m_pointLightVolumeProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_point_light_volume.sc", "../45-deferred-shading/fs_point_light_volume.sc", "../45-deferred-shading/varying.def.sc");
-			m_emissivePassProgram = Dolphin::compileGraphicsShader("../45-deferred-shading/vs_emissive_pass.sc", "../45-deferred-shading/fs_emissive_pass.sc", "../45-deferred-shading/varying.def.sc");
+			compileNeededShaders();
 
 			TAA::init(m_pbrUniforms);
 			TAA::init(m_deferredSceneUniforms);
 			TAA::init(m_pointLightUniforms);
+
+			u_historyBufferHandle = bgfx::createUniform("s_historyBuffer", bgfx::UniformType::Sampler);
 
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
@@ -345,6 +378,9 @@ namespace TAA
 
 			m_gBuffer = bgfx::createFrameBuffer(BX_COUNTOF(gbufferAt), gbufferAt, true);
 			m_lightGBuffer = bgfx::createFrameBuffer(2, &gbufferAt[4], false);
+
+			m_historyRT = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
+			m_copyHistFrameBuffer = bgfx::createFrameBuffer(1, &m_historyRT, false);
 
 			m_toneMapParams.m_width = m_width;
 			m_toneMapParams.m_height = m_height;
@@ -531,13 +567,6 @@ namespace TAA
 				| BGFX_STATE_DEPTH_TEST_LESS;
 			// Lets render our light volumes
 			for (size_t i = 0; i < m_lightSet.numActiveLights; ++i) {
-				// First, we render our light volumes purely to determine stencil state
-				// We determine whether a light volume should be rendered by the following algo:
-				//   1) The front faces must be IN FRONT of scene geometry
-				//   2) The back faces must be BEHIND scene geometry
-				// However, our stencil test is setup such that any non-zero value is considered
-				// a FAIL -- so we increment whenever a fragement in our light volume fails to
-				// satisfy either condition.
 				uint32_t frontStencilFunc = BGFX_STENCIL_TEST_ALWAYS
 					| BGFX_STENCIL_FUNC_REF(0)
 					| BGFX_STENCIL_FUNC_RMASK(0xFF)
@@ -565,10 +594,6 @@ namespace TAA
 				m_lightSet.volumeMesh.setBuffers();
 				bgfx::submit(lightingPass, m_lightStencilProgram);
 
-				// Now that we have incremented our stencil for fragments we DONT want to shade,
-				// lets perform the shading pass with our stencil test set such that it must equal 0
-				// Additionally, let's "clean up" after ourselves by reseting the failing, incremented
-				// stencil fragments back to zero.
 				uint64_t lightVolumeState = 0
 					| BGFX_STATE_WRITE_RGB
 					| BGFX_STATE_CULL_CW
@@ -606,7 +631,11 @@ namespace TAA
 			bgfx::setTexture(0, m_deferredSceneUniforms.s_emissiveOcclusion, m_gbufferTex[2], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
 			bgfx::submit(emissivePass, m_emissivePassProgram);
 
-			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, emissivePass + 1);
+			bgfx::ViewId copyPass = emissivePass + 1;
+			bgfx::setTexture(0, u_historyBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
+
+			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, copyPass + 1);
 
 			bgfx::frame();
 
@@ -629,6 +658,8 @@ namespace TAA
 		bgfx::ProgramHandle m_lightStencilProgram;
 		bgfx::ProgramHandle m_pointLightVolumeProgram;
 		bgfx::ProgramHandle m_emissivePassProgram;
+		bgfx::ProgramHandle m_copyHistoryBufferProgram;
+		bgfx::ProgramHandle m_motionBlurProgram;
 
 		Dolphin::Model m_model;
 		PBRShaderUniforms m_pbrUniforms;
@@ -646,6 +677,9 @@ namespace TAA
 		bgfx::FrameBufferHandle m_hdrFrameBuffer = BGFX_INVALID_HANDLE;
 
 		bgfx::TextureHandle m_historyRT = BGFX_INVALID_HANDLE;
+		bgfx::FrameBufferHandle m_copyHistFrameBuffer = BGFX_INVALID_HANDLE;
+
+		bgfx::UniformHandle u_historyBufferHandle = BGFX_INVALID_HANDLE;
 
 		Dolphin::ToneMapParams m_toneMapParams;
 		Dolphin::ToneMapping m_toneMapPass;
