@@ -208,7 +208,7 @@ namespace TAA
 			std::string prefix("../49-taa/");
 
 			m_writeToRTProgram = compileSingleGraphicsProgram(prefix, "vs_deferred_pbr", "fs_deferred_pbr");
-			m_lightStencilProgram = compileSingleGraphicsProgram(prefix, "vs_light_stencil.sc", "fs_light_stencil.sc");
+			m_lightStencilProgram = compileSingleGraphicsProgram(prefix, "vs_light_stencil", "fs_light_stencil");
 			m_pointLightVolumeProgram = compileSingleGraphicsProgram(prefix, "vs_point_light_volume", "fs_point_light_volume");
 			m_emissivePassProgram = compileSingleGraphicsProgram(prefix, "vs_emissive_pass", "fs_emissive_pass");
 
@@ -634,6 +634,7 @@ namespace TAA
 			bgfx::ViewId copyPass = emissivePass + 1;
 			bgfx::setTexture(0, u_historyBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
 			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
+			bgfx::setViewName(copyPass, "Copy Framebuffer");
 
 			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, copyPass + 1);
 
