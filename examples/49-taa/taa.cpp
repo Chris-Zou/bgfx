@@ -379,8 +379,7 @@ namespace TAA
 			m_gBuffer = bgfx::createFrameBuffer(BX_COUNTOF(gbufferAt), gbufferAt, true);
 			m_lightGBuffer = bgfx::createFrameBuffer(2, &gbufferAt[4], false);
 
-			m_historyRT = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
-			m_copyHistFrameBuffer = bgfx::createFrameBuffer(1, &m_historyRT, false);
+			
 
 			m_toneMapParams.m_width = m_width;
 			m_toneMapParams.m_height = m_height;
@@ -416,6 +415,18 @@ namespace TAA
 			bgfx::setName(m_hdrFbTextures[0], "HDR Buffer");
 
 			m_hdrFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_hdrFbTextures), m_hdrFbTextures, true);
+
+			m_historyRT[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT) | BGFX_SAMPLER_UVW_CLAMP | BGFX_SAMPLER_POINT);
+			m_historyRT[1] = bgfx::createTexture2D(
+				uint16_t(m_width)
+				, uint16_t(m_height)
+				, false
+				, 1
+				, depthFormat
+				, textureFlags
+			);
+			m_copyHistFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_historyRT), m_historyRT, false);
+			bgfx::setName(m_historyRT[0], "Copy Buffer");
 		}
 
 		bool update() override
@@ -632,9 +643,13 @@ namespace TAA
 			bgfx::submit(emissivePass, m_emissivePassProgram);
 
 			bgfx::ViewId copyPass = emissivePass + 1;
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CW);
+			Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+			bgfx::setViewTransform(copyPass, nullptr, orthoProjection);
 			bgfx::setTexture(0, u_historyBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
-			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
 			bgfx::setViewName(copyPass, "Copy Framebuffer");
+			bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
+			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
 
 			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, copyPass + 1);
 
@@ -677,7 +692,7 @@ namespace TAA
 		bgfx::TextureHandle m_hdrFbTextures[2];
 		bgfx::FrameBufferHandle m_hdrFrameBuffer = BGFX_INVALID_HANDLE;
 
-		bgfx::TextureHandle m_historyRT = BGFX_INVALID_HANDLE;
+		bgfx::TextureHandle m_historyRT[2];
 		bgfx::FrameBufferHandle m_copyHistFrameBuffer = BGFX_INVALID_HANDLE;
 
 		bgfx::UniformHandle u_historyBufferHandle = BGFX_INVALID_HANDLE;
