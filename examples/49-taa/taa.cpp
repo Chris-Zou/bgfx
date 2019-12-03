@@ -416,7 +416,7 @@ namespace TAA
 
 			m_hdrFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_hdrFbTextures), m_hdrFbTextures, true);
 
-			m_historyRT[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, (uint64_t(msaa + 1) << BGFX_TEXTURE_RT_MSAA_SHIFT) | BGFX_SAMPLER_UVW_CLAMP | BGFX_SAMPLER_POINT);
+			m_historyRT[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
 			m_historyRT[1] = bgfx::createTexture2D(
 				uint16_t(m_width)
 				, uint16_t(m_height)
@@ -490,6 +490,11 @@ namespace TAA
 			// We want our draw calls to execute in order
 			bgfx::setViewMode(lightingPass, bgfx::ViewMode::Sequential);
 			bgfx::setViewName(lightingPass, "Lighting Pass");
+
+			/*bgfx::ViewId copyPass = 2;
+			bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
+			bgfx::setViewRect(copyPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
+			bgfx::setViewName(copyPass, "Copy Pass");*/
 
 			bgfx::ViewId emissivePass = 2;
 			bgfx::setViewFrameBuffer(emissivePass, m_lightGBuffer);
@@ -643,11 +648,12 @@ namespace TAA
 			bgfx::submit(emissivePass, m_emissivePassProgram);
 
 			bgfx::ViewId copyPass = emissivePass + 1;
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CW);
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CCW);
 			Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
 			bgfx::setViewTransform(copyPass, nullptr, orthoProjection);
 			bgfx::setTexture(0, u_historyBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
 			bgfx::setViewName(copyPass, "Copy Framebuffer");
+			bgfx::setViewRect(copyPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
 			bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
 			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
 
