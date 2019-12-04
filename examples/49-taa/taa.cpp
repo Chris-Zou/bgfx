@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Daniel Gavin. All rights reserved.
+ * Copyright 2019 Zou Pan Pan. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx#license-bsd-2-clause
  */
 
@@ -253,6 +253,9 @@ namespace TAA
 
 			u_historyBufferHandle = bgfx::createUniform("s_historyBuffer", bgfx::UniformType::Sampler);
 
+			u_depthBufferHandle = bgfx::createUniform("s_depthBuffer", bgfx::UniformType::Sampler);
+			u_depthResolveHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
+
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
 			m_lightSet.init();
@@ -277,6 +280,15 @@ namespace TAA
 			m_oldReset = m_reset;
 
 			m_time = 0.0f;
+		}
+
+		void setDepthResolveUnifroms(float nearPlane, float farPlane)
+		{
+			float params[4] = {0.0f};
+			params[0] = nearPlane;
+			params[1] = farPlane;
+
+			bgfx::setUniform(u_depthResolveHandle, params);
 		}
 
 		virtual int shutdown() override
@@ -487,14 +499,10 @@ namespace TAA
 			bgfx::ViewId lightingPass = 1;
 			bgfx::setViewFrameBuffer(lightingPass, m_lightGBuffer);
 			bgfx::setViewRect(lightingPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
-			// We want our draw calls to execute in order
+
 			bgfx::setViewMode(lightingPass, bgfx::ViewMode::Sequential);
 			bgfx::setViewName(lightingPass, "Lighting Pass");
 
-			/*bgfx::ViewId copyPass = 2;
-			bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
-			bgfx::setViewRect(copyPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
-			bgfx::setViewName(copyPass, "Copy Pass");*/
 
 			bgfx::ViewId emissivePass = 2;
 			bgfx::setViewFrameBuffer(emissivePass, m_lightGBuffer);
@@ -514,12 +522,11 @@ namespace TAA
 			float proj[16];
 			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
 
-			// Update camera
 			float view[16];
 
 			cameraUpdate(0.1f * deltaTime, m_mouseState);
 			cameraGetViewMtx(view);
-			// Set view and projection matrix
+
 			bgfx::setViewTransform(meshPass, view, proj);
 
 			glm::mat4 mtx = glm::identity<glm::mat4>();
@@ -531,11 +538,9 @@ namespace TAA
 				| BGFX_STATE_DEPTH_TEST_LESS
 				| BGFX_STATE_CULL_CCW;
 
-			// Set view 0 default viewport.
 			bx::Vec3 cameraPos = cameraGetPosition();
 			bgfx::setUniform(m_deferredSceneUniforms.u_cameraPos, &cameraPos.x);
 
-			// Render all our opaque meshes
 			const Dolphin::MeshGroup& meshes = m_model.opaqueMeshes;
 			for (size_t i = 0; i < meshes.meshes.size(); ++i) {
 				const auto& mesh = meshes.meshes[i];
@@ -550,8 +555,7 @@ namespace TAA
 
 			{
 				m_lightSet.numActiveLights = uint16_t(numActiveLights);
-				// Move our lights around in a cylinder the size of our scene
-				// These numbers are adhoc, based on sponza.
+
 				constexpr float sceneWidth = 12.0f;
 				constexpr float sceneLength = 4.0f;
 				constexpr float sceneHeight = 10.0f;
@@ -567,21 +571,19 @@ namespace TAA
 					float r = initial.x;
 					float phaseOffset = initial.y;
 					float z = initial.z;
-					// Set positions in Cartesian
 					m_lightSet.positionRadiusData[i].x = r * sceneWidth * bx::cos(timeCoeff * m_time + phaseOffset);
 					m_lightSet.positionRadiusData[i].z = r * sceneLength * bx::sin(timeCoeff * m_time + phaseOffset);
 					m_lightSet.positionRadiusData[i].y = sceneHeight * z;
-					// Set intensity and radius
 					m_lightSet.colorIntensityData[i].w = intensity;
 					m_lightSet.positionRadiusData[i].w = radius;
 				}
 			}
 
 			bgfx::setViewTransform(lightingPass, view, proj);
-			// We need to set up the stencil state for rendering our lights
+
 			uint64_t stencilState = 0
 				| BGFX_STATE_DEPTH_TEST_LESS;
-			// Lets render our light volumes
+
 			for (size_t i = 0; i < m_lightSet.numActiveLights; ++i) {
 				uint32_t frontStencilFunc = BGFX_STENCIL_TEST_ALWAYS
 					| BGFX_STENCIL_FUNC_REF(0)
@@ -635,7 +637,6 @@ namespace TAA
 				bgfx::submit(lightingPass, m_pointLightVolumeProgram);
 			}
 
-			// Here we are simply drawing a full screen quad to add emissive radiance from our gbuffers into our final buffer
 			float orthoProjection[16];
 			bx::mtxOrtho(orthoProjection, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 2.0f, 0.0f, m_caps->homogeneousDepth);
 			uint64_t emissivePassState = 0
@@ -702,6 +703,10 @@ namespace TAA
 		bgfx::FrameBufferHandle m_copyHistFrameBuffer = BGFX_INVALID_HANDLE;
 
 		bgfx::UniformHandle u_historyBufferHandle = BGFX_INVALID_HANDLE;
+
+		bgfx::UniformHandle u_depthBufferHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_depthResolveHandle = BGFX_INVALID_HANDLE;
+
 
 		Dolphin::ToneMapParams m_toneMapParams;
 		Dolphin::ToneMapping m_toneMapPass;
