@@ -503,7 +503,6 @@ namespace TAA
 			bgfx::setViewMode(lightingPass, bgfx::ViewMode::Sequential);
 			bgfx::setViewName(lightingPass, "Lighting Pass");
 
-
 			bgfx::ViewId emissivePass = 2;
 			bgfx::setViewFrameBuffer(emissivePass, m_lightGBuffer);
 			bgfx::setViewRect(emissivePass, 0, 0, uint16_t(m_width), uint16_t(m_height));
