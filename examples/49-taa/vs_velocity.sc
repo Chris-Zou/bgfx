@@ -5,6 +5,8 @@ $output v_cs_pos, v_ss_pos, v_cs_xy_curr, v_cs_xy_prev
 
 uniform mat4 currVP;
 uniform mat4 prevVP;
+uniform mat4 currM;
+uniform mat4 prevM;
 
 vec4 getScreenPos(vec4 cs_pos)
 {
@@ -17,7 +19,7 @@ void main()
 	
 	v_cs_pos = mul(u_modelViewProj, a_position);
 	v_ss_pos = getScreenPos(v_cs_pos);
-	v_ss_pos.z = -mul(mul(currV, CurrM), a_position).z - occlusion_bias;
+	v_ss_pos.z = -mul(mul(currV, currM), a_position).z - occlusion_bias;
 	v_cs_xy_curr = v_cs_pos.xyw;
 	v_cs_xy_prev = mul(mul(prevP, prevM), a_position).xyw;
 }

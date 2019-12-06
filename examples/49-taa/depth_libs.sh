@@ -42,9 +42,9 @@ http://www.humus.ca
 float resolve_linear_depth(float nearPlane, float farPlane, float z)
 {
 #if BGFX_SHADER_LANGUAGE_GLSL
-	(2.0 * nearPlane) / (farPlane + nearPlane - z * (farPlane - nearPlane));
+	return (2.0 * nearPlane) / (farPlane + nearPlane - z * (farPlane - nearPlane));
 #else
-	nearPlane / (farPlane - z * (farPlane - nearPlane));
+	return nearPlane / (farPlane - z * (farPlane - nearPlane));
 #endif
 }
 

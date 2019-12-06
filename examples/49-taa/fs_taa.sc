@@ -5,6 +5,9 @@ $input v_cs_pos, v_ss_txc
 #include "depthLibs.sh"
 
 SAMPLER2D(s_mainTex, 0);
+SAMPLER2D(s_velocityBuffer, 1);
+SAMPLER2D(s_prevBuffer, 2);
+uniform vec4 mainTexel;
 
 vec3 RGB_YCoCg(vec3 c)
 {
@@ -76,8 +79,8 @@ vec4 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec4 p, vec4 q)
 
 vec2 sample_velocity_dilated(sampler2D tex, vec2 uv, int support)
 {
-	vec2 du = vec2(_MainTex_TexelSize.x, 0.0);
-	vec2 dv = vec2(0.0, _MainTex_TexelSize.y);
+	vec2 du = vec2(mainTexel.x, 0.0);
+	vec2 dv = vec2(0.0, mainTexel.y);
 	vec2 mv = 0.0;
 	float rmv = 0.0;
 
@@ -128,7 +131,7 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 #else
 	vec4 texel0 = sample_color(s_mainTex, ss_txc);
 #endif
-	vec4 texel1 = sample_color(_PrevTex, ss_txc - ss_vel);
+	vec4 texel1 = sample_color(s_prevBuffer, ss_txc - ss_vel);
 
 	// calc min-max of current neighbourhood
 #if UNJITTER_NEIGHBORHOOD
@@ -139,8 +142,8 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 
 #if MINMAX_3X3 || MINMAX_3X3_ROUNDED
 
-	vec2 du = vec2(_MainTex_TexelSize.x, 0.0);
-	vec2 dv = vec2(0.0, _MainTex_TexelSize.y);
+	vec2 du = vec2(mainTexel.x, 0.0);
+	vec2 dv = vec2(0.0, mainTexel.y);
 
 	vec4 ctl = sample_color(s_mainTex, uv - dv - du);
 	vec4 ctc = sample_color(s_mainTex, uv - dv);
@@ -174,13 +177,13 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 	const float _GatherBase = 0.5;
 	const float _GatherSubpixelMotion = 0.1666;
 
-	vec2 texel_vel = ss_vel / _MainTex_TexelSize.xy;
+	vec2 texel_vel = ss_vel / mainTexel.xy;
 	float texel_vel_mag = length(texel_vel) * vs_dist;
 	float k_subpixel_motion = saturate(_SubpixelThreshold / (FLT_EPS + texel_vel_mag));
 	float k_min_max_support = _GatherBase + _GatherSubpixelMotion * k_subpixel_motion;
 
-	vec2 ss_offset01 = k_min_max_support * vec2(-_MainTex_TexelSize.x, _MainTex_TexelSize.y);
-	vecs ss_offset11 = k_min_max_support * vec2(_MainTex_TexelSize.x, _MainTex_TexelSize.y);
+	vec2 ss_offset01 = k_min_max_support * vec2(-mainTexel.x, mainTexel.y);
+	vecs ss_offset11 = k_min_max_support * vec2(mainTexel.x, mainTexel.y);
 	vec4 c00 = sample_color(s_mainTex, uv - ss_offset11);
 	vec4 c10 = sample_color(s_mainTex, uv - ss_offset01);
 	vec4 c01 = sample_color(s_mainTex, uv + ss_offset01);
@@ -233,9 +236,9 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 void main()
 {
 #if UNJITTER_REPROJECTION
-	vec2 uv = IN.ss_txc - _JitterUV.xy;
+	vec2 uv = v_ss_txc - _JitterUV.xy;
 #else
-	vec2 uv = IN.ss_txc;
+	vec2 uv = Iv_ss_txc;
 #endif
 
 #if USE_DILATION
@@ -250,28 +253,28 @@ void main()
 #endif
 
 	// temporal resolve
-	vec4 color_temporal = temporal_reprojection(IN.ss_txc, ss_vel, vs_dist);
+	vec4 color_temporal = temporal_reprojection(v_ss_txc, ss_vel, vs_dist);
 
 	// prepare outputs
 	vec4 to_buffer = resolve_color(color_temporal);
 		
 #if USE_MOTION_BLUR
 	#if USE_MOTION_BLUR_NEIGHBORMAX
-		ss_vel = _MotionScale * tex2D(_VelocityNeighborMax, IN.ss_txc).xy;
+		ss_vel = _MotionScale * tex2D(_VelocityNeighborMax, v_ss_txc).xy;
 	#else
 		ss_vel = _MotionScale * ss_vel;
 	#endif
 
-	float vel_mag = length(ss_vel * _MainTex_TexelSize.zw);
+	float vel_mag = length(ss_vel * mainTexel.zw);
 	const float vel_trust_full = 2.0;
 	const float vel_trust_none = 15.0;
 	const float vel_trust_span = vel_trust_none - vel_trust_full;
 	float trust = 1.0 - clamp(vel_mag - vel_trust_full, 0.0, vel_trust_span) / vel_trust_span;
 
 	#if UNJITTER_COLORSAMPLES
-		vec4 color_motion = sample_color_motion(s_mainTex, IN.ss_txc - _JitterUV.xy, ss_vel);
+		vec4 color_motion = sample_color_motion(s_mainTex, v_ss_txc - _JitterUV.xy, ss_vel);
 	#else
-		vec4 color_motion = sample_color_motion(s_mainTex, IN.ss_txc, ss_vel);
+		vec4 color_motion = sample_color_motion(s_mainTex, v_ss_txc, ss_vel);
 	#endif
 
 	vec4 to_screen = resolve_color(lerp(color_motion, color_temporal, trust));
@@ -282,7 +285,7 @@ void main()
 	// NOTE: velocity debug
 
 	// add noise
-	vec4 noise4 = PDsrand4(IN.ss_txc + _SinTime.x + 0.6959174) / 510.0;
+	vec4 noise4 = srand4(v_ss_txc + _SinTime.x + 0.6959174) / 510.0;
 	gl_FragColor0 = saturate(to_buffer + noise4);
 	gl_FragColor1 = saturate(to_screen + noise4);
 }

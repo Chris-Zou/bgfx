@@ -213,6 +213,8 @@ namespace TAA
 			m_emissivePassProgram = compileSingleGraphicsProgram(prefix, "vs_emissive_pass", "fs_emissive_pass");
 
 			m_copyHistoryBufferProgram = compileSingleGraphicsProgram(prefix, "vs_fullscreen", "fs_copy_buffer");
+
+			m_velocityBufferProgram = compileSingleGraphicsProgram(prefix, "vs_blit", "fs_velocity_prepass");
 		}
 
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
@@ -681,7 +683,7 @@ namespace TAA
 		bgfx::ProgramHandle m_pointLightVolumeProgram;
 		bgfx::ProgramHandle m_emissivePassProgram;
 		bgfx::ProgramHandle m_copyHistoryBufferProgram;
-		bgfx::ProgramHandle m_motionBlurProgram;
+		bgfx::ProgramHandle m_velocityBufferProgram;
 
 		Dolphin::Model m_model;
 		PBRShaderUniforms m_pbrUniforms;
@@ -706,6 +708,8 @@ namespace TAA
 		bgfx::UniformHandle u_depthBufferHandle = BGFX_INVALID_HANDLE;
 		bgfx::UniformHandle u_depthResolveHandle = BGFX_INVALID_HANDLE;
 
+		bgfx::UniformHandle u_prevVPHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_prevMHandle = BGFX_INVALID_HANDLE;
 
 		Dolphin::ToneMapParams m_toneMapParams;
 		Dolphin::ToneMapping m_toneMapPass;
