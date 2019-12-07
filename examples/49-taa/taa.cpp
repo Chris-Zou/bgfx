@@ -215,6 +215,8 @@ namespace TAA
 			m_copyHistoryBufferProgram = compileSingleGraphicsProgram(prefix, "vs_fullscreen", "fs_copy_buffer");
 
 			m_velocityBufferProgram = compileSingleGraphicsProgram(prefix, "vs_blit", "fs_velocity_prepass");
+
+			m_taaProgram = compileSingleGraphicsProgram(prefix, "vs_taa", "fs_taa");
 		}
 
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
@@ -684,6 +686,7 @@ namespace TAA
 		bgfx::ProgramHandle m_emissivePassProgram;
 		bgfx::ProgramHandle m_copyHistoryBufferProgram;
 		bgfx::ProgramHandle m_velocityBufferProgram;
+		bgfx::ProgramHandle m_taaProgram;
 
 		Dolphin::Model m_model;
 		PBRShaderUniforms m_pbrUniforms;

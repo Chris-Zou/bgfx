@@ -460,7 +460,7 @@ namespace Atmosphere
 
 			if (m_aCameraPos[1] < 10000.0f)
 			{
-				m_aCameraPos[1] += deltaTime * 100.0f;
+				//m_aCameraPos[1] += deltaTime * 100.0f;
 			}
 
 			float proj[16];

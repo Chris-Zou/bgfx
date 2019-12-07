@@ -1,19 +1,44 @@
-$input v_cs_pos, v_ss_txc
+$input v_cs_pos, v_ss_tex
 
 #include "../common/common.sh"
-#include "NoiseLibs.sh"
-#include "depthLibs.sh"
+
+#define FLT_EPS 0.0001
+
+#define MINMAX_3X3_ROUNDED 1
+#define UNJITTER_COLORSAMPLES 1
+#define UNJITTER_NEIGHBORHOOD 0
+#define UNJITTER_REPROJECTION 0
+#define USE_YCOCG 0
+#define USE_CLIPPING 1
+#define USE_DILATION 1
+#define USE_MOTION_BLUR 1
+#define USE_OPTIMIZATIONS 1
+
+#define USE_MOTION_BLUR_NEIGHBORMAX 0
 
 SAMPLER2D(s_mainTex, 0);
 SAMPLER2D(s_velocityBuffer, 1);
 SAMPLER2D(s_prevBuffer, 2);
+SAMPLER2D(s_depthBuffer, 3);
+
 uniform vec4 mainTexel;
+uniform vec4 jitterUV;
+uniform vec4 sinTime;
+uniform vec4 feedbackMin;
+uniform vec4 feedbackMax;
+uniform vec4 motionScale;
+uniform vec4 planeDist;
+
+#define texelSize mainTexel
+
+#include "noise_libs.sh"
+#include "depth_libs.sh"
+
+#define nearPlane planeDist.x
+#define farPlane planeDist.y
 
 vec3 RGB_YCoCg(vec3 c)
 {
-	// Y = R/4 + G/2 + B/4
-	// Co = R/2 - B/2
-	// Cg = -R/4 + G/2 - B/4
 	return vec3(
 		 c.x/4.0 + c.y/2.0 + c.z/4.0,
 		 c.x/2.0 - c.z/2.0,
@@ -23,9 +48,6 @@ vec3 RGB_YCoCg(vec3 c)
 
 vec3 YCoCg_RGB(vec3 c)
 {
-	// R = Y + Co - Cg
-	// G = Y + Cg
-	// B = Y - Co - Cg
 	return saturate(vec3(
 		c.x + c.y - c.z,
 		c.x + c.z,
@@ -36,10 +58,10 @@ vec3 YCoCg_RGB(vec3 c)
 vec4 sample_color(sampler2D tex, vec2 uv)
 {
 #if USE_YCOCG
-	vec4 c = tex2D(tex, uv);
+	vec4 c = texture2D(tex, uv);
 	return vec4(RGB_YCoCg(c.rgb), c.a);
 #else
-	return tex2D(tex, uv);
+	return texture2D(tex, uv);
 #endif
 }
 
@@ -89,7 +111,7 @@ vec2 sample_velocity_dilated(sampler2D tex, vec2 uv, int support)
 	{
 		for (int j = -support; j != end; j++)
 		{
-			vec2 v = tex2D(tex, uv + i * dv + j * du).xy;
+			vec2 v = texture2D(tex, uv + i * dv + j * du).xy;
 			float rv = dot(v, v);
 			if (rv > rmv)
 			{
@@ -106,9 +128,9 @@ vec4 sample_color_motion(sampler2D tex, vec2 uv, vec2 ss_vel)
 	const vec2 v = 0.5 * ss_vel;
 	const int taps = 3;// on either side!
 
-	float srand = srand(uv + _SinTime.xx);
+	float fsrand = srand(uv + sinTime.xx);
 	vec2 vtap = v / taps;
-	vec2 pos0 = uv + vtap * (0.5 * srand);
+	vec2 pos0 = uv + vtap * (0.5 * fsrand);
 	vec4 accu = 0.0;
 	float wsum = 0.0;
 
@@ -123,11 +145,16 @@ vec4 sample_color_motion(sampler2D tex, vec2 uv, vec2 ss_vel)
 	return accu / wsum;
 }
 
+float Luminance(vec3 rgb)
+{
+	return  0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+}
+
 vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 {
 	// read texels
 #if UNJITTER_COLORSAMPLES
-	vec4 texel0 = sample_color(s_mainTex, ss_txc - _JitterUV.xy);
+	vec4 texel0 = sample_color(s_mainTex, ss_txc - jitterUV.xy);
 #else
 	vec4 texel0 = sample_color(s_mainTex, ss_txc);
 #endif
@@ -135,7 +162,7 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 
 	// calc min-max of current neighbourhood
 #if UNJITTER_NEIGHBORHOOD
-	vec2 uv = ss_txc - _JitterUV.xy;
+	vec2 uv = ss_txc - jitterUV.xy;
 #else
 	vec2 uv = ss_txc;
 #endif
@@ -227,7 +254,7 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 	float unbiased_diff = abs(lum0 - lum1) / max(lum0, max(lum1, 0.2));
 	float unbiased_weight = 1.0 - unbiased_diff;
 	float unbiased_weight_sqr = unbiased_weight * unbiased_weight;
-	float k_feedback = lerp(_FeedbackMin, _FeedbackMax, unbiased_weight_sqr);
+	float k_feedback = lerp(feedbackMin, feedbackMax, unbiased_weight_sqr);
 
 	// output
 	return lerp(texel0, texel1, k_feedback);
@@ -236,33 +263,33 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 void main()
 {
 #if UNJITTER_REPROJECTION
-	vec2 uv = v_ss_txc - _JitterUV.xy;
+	vec2 uv = v_ss_tex - jitterUV.xy;
 #else
-	vec2 uv = Iv_ss_txc;
+	vec2 uv = v_ss_tex;
 #endif
 
 #if USE_DILATION
 
 	//--- 3x3 nearest (good)
-	vec3 c_frag = find_closest_fragment_3x3(uv);
-	vec2 ss_vel = tex2D(_VelocityBuffer, c_frag.xy).xy;
-	float vs_dist = depth_resolve_linear(c_frag.z);
+	vec3 c_frag = find_closet_fragment_3x3(uv);
+	vec2 ss_vel = texture2D(s_velocityBuffer, c_frag.xy).xy;
+	float vs_dist = resolve_linear_depth(nearPlane, farPlane, c_frag.z);
 #else
-	vec2 ss_vel = tex2D(_VelocityBuffer, uv).xy;
+	vec2 ss_vel = texture2D(s_velocityBuffer, uv).xy;
 	float vs_dist = depth_sample_linear(uv);
 #endif
 
 	// temporal resolve
-	vec4 color_temporal = temporal_reprojection(v_ss_txc, ss_vel, vs_dist);
+	vec4 color_temporal = temporal_reprojection(v_ss_tex, ss_vel, vs_dist);
 
 	// prepare outputs
 	vec4 to_buffer = resolve_color(color_temporal);
 		
 #if USE_MOTION_BLUR
 	#if USE_MOTION_BLUR_NEIGHBORMAX
-		ss_vel = _MotionScale * tex2D(_VelocityNeighborMax, v_ss_txc).xy;
+		ss_vel = motionScale * texture2D(_VelocityNeighborMax, v_ss_txc).xy;
 	#else
-		ss_vel = _MotionScale * ss_vel;
+		ss_vel = motionScale * ss_vel;
 	#endif
 
 	float vel_mag = length(ss_vel * mainTexel.zw);
@@ -272,9 +299,9 @@ void main()
 	float trust = 1.0 - clamp(vel_mag - vel_trust_full, 0.0, vel_trust_span) / vel_trust_span;
 
 	#if UNJITTER_COLORSAMPLES
-		vec4 color_motion = sample_color_motion(s_mainTex, v_ss_txc - _JitterUV.xy, ss_vel);
+		vec4 color_motion = sample_color_motion(s_mainTex, v_ss_tex - jitterUV.xy, ss_vel);
 	#else
-		vec4 color_motion = sample_color_motion(s_mainTex, v_ss_txc, ss_vel);
+		vec4 color_motion = sample_color_motion(s_mainTex, v_ss_tex, ss_vel);
 	#endif
 
 	vec4 to_screen = resolve_color(lerp(color_motion, color_temporal, trust));
@@ -282,10 +309,8 @@ void main()
 	vec4 to_screen = resolve_color(color_temporal);
 #endif
 
-	// NOTE: velocity debug
-
 	// add noise
-	vec4 noise4 = srand4(v_ss_txc + _SinTime.x + 0.6959174) / 510.0;
-	gl_FragColor0 = saturate(to_buffer + noise4);
-	gl_FragColor1 = saturate(to_screen + noise4);
+	vec4 noise4 = srand4(v_ss_tex + sinTime.x + 0.6959174) / 510.0;
+	gl_FragData[0] = saturate(to_buffer + noise4);
+	gl_FragData[1] = saturate(to_screen + noise4);
 }

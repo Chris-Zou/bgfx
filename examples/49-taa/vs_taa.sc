@@ -1,12 +1,12 @@
-$input a_position, a_texcoord
-$output v_cs_pos, v_ss_txc
+$input a_position, a_texcoord0
+$output v_cs_pos, v_ss_tex
 
-#include "../comon/common.sh"
-#include "depthLibs.sh"
-#include "NoiseLibs.sh"
+#include "../common/common.sh"
 
 void main()
 {
-	v_cs_pos = mul(u_modelViewProj, a_position);
-	v_ss_txc = a_texcoord;
+	v_cs_pos = mul(u_modelViewProj, vec4(a_position, 1.0));
+	v_ss_tex = a_texcoord0;
+
+	gl_Position = v_cs_pos;
 }
