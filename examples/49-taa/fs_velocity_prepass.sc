@@ -20,7 +20,8 @@ void main()
 	
 	vec4 ws_pos = mul(u_model[0], vec4(vs_pos, 1.0));
 
-	vec4 rp_cs_pos = mul(u_prevVP, ws_pos);
+	mat4 prevVP = u_prevVP * u_proj;
+	vec4 rp_cs_pos = mul(prevVP, ws_pos);
 	vec2 rp_ss_ndc = rp_cs_pos.xy / rp_cs_pos.w;
 	vec2 rp_ss_tex = 0.5 * rp_ss_ndc + 0.5;
 

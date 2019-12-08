@@ -2,7 +2,7 @@ $input v_cs_pos, v_ss_tex
 
 #include "../common/common.sh"
 
-#define FLT_EPS 0.0001
+#define FLT_EPS 0.00001
 
 #define MINMAX_3X3_ROUNDED 1
 #define UNJITTER_COLORSAMPLES 1
@@ -21,21 +21,20 @@ SAMPLER2D(s_velocityBuffer, 1);
 SAMPLER2D(s_prevBuffer, 2);
 SAMPLER2D(s_depthBuffer, 3);
 
-uniform vec4 mainTexel;
+uniform vec4 texelSize;
 uniform vec4 jitterUV;
-uniform vec4 sinTime;
-uniform vec4 feedbackMin;
-uniform vec4 feedbackMax;
-uniform vec4 motionScale;
-uniform vec4 planeDist;
+uniform vec4 sinTimeMotionScale;
+uniform vec4 u_params;
 
-#define texelSize mainTexel
+#define nearPlane u_params.x
+#define farPlane u_params.y
+#define feedbackMin u_params.z
+#define feedbackMax u_params.w
+#define sinTime sinTimeMotionScale.xy
+#define motionScale sinTimeMotionScale.z
 
 #include "noise_libs.sh"
 #include "depth_libs.sh"
-
-#define nearPlane planeDist.x
-#define farPlane planeDist.y
 
 vec3 RGB_YCoCg(vec3 c)
 {
@@ -101,8 +100,8 @@ vec4 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec4 p, vec4 q)
 
 vec2 sample_velocity_dilated(sampler2D tex, vec2 uv, int support)
 {
-	vec2 du = vec2(mainTexel.x, 0.0);
-	vec2 dv = vec2(0.0, mainTexel.y);
+	vec2 du = vec2(texelSize.x, 0.0);
+	vec2 dv = vec2(0.0, texelSize.y);
 	vec2 mv = 0.0;
 	float rmv = 0.0;
 
@@ -169,8 +168,8 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 
 #if MINMAX_3X3 || MINMAX_3X3_ROUNDED
 
-	vec2 du = vec2(mainTexel.x, 0.0);
-	vec2 dv = vec2(0.0, mainTexel.y);
+	vec2 du = vec2(texelSize.x, 0.0);
+	vec2 dv = vec2(0.0, texelSize.y);
 
 	vec4 ctl = sample_color(s_mainTex, uv - dv - du);
 	vec4 ctc = sample_color(s_mainTex, uv - dv);
@@ -204,13 +203,13 @@ vec4 temporal_reprojection(vec2 ss_txc, vec2 ss_vel, float vs_dist)
 	const float _GatherBase = 0.5;
 	const float _GatherSubpixelMotion = 0.1666;
 
-	vec2 texel_vel = ss_vel / mainTexel.xy;
+	vec2 texel_vel = ss_vel / texelSize.xy;
 	float texel_vel_mag = length(texel_vel) * vs_dist;
 	float k_subpixel_motion = saturate(_SubpixelThreshold / (FLT_EPS + texel_vel_mag));
 	float k_min_max_support = _GatherBase + _GatherSubpixelMotion * k_subpixel_motion;
 
-	vec2 ss_offset01 = k_min_max_support * vec2(-mainTexel.x, mainTexel.y);
-	vecs ss_offset11 = k_min_max_support * vec2(mainTexel.x, mainTexel.y);
+	vec2 ss_offset01 = k_min_max_support * vec2(-texelSize.x, texelSize.y);
+	vecs ss_offset11 = k_min_max_support * vec2(texelSize.x, texelSize.y);
 	vec4 c00 = sample_color(s_mainTex, uv - ss_offset11);
 	vec4 c10 = sample_color(s_mainTex, uv - ss_offset01);
 	vec4 c01 = sample_color(s_mainTex, uv + ss_offset01);
@@ -292,7 +291,7 @@ void main()
 		ss_vel = motionScale * ss_vel;
 	#endif
 
-	float vel_mag = length(ss_vel * mainTexel.zw);
+	float vel_mag = length(ss_vel * texelSize.zw);
 	const float vel_trust_full = 2.0;
 	const float vel_trust_none = 15.0;
 	const float vel_trust_span = vel_trust_none - vel_trust_full;

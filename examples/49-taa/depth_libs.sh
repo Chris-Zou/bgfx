@@ -39,18 +39,18 @@ GL:
 http://www.humus.ca
 */
 
-float resolve_linear_depth(float nearPlane, float farPlane, float z)
+float resolve_linear_depth(float _nearPlane, float _farPlane, float z)
 {
 #if BGFX_SHADER_LANGUAGE_GLSL
-	return (2.0 * nearPlane) / (farPlane + nearPlane - z * (farPlane - nearPlane));
+	return (2.0 * _nearPlane) / (_farPlane + _nearPlane - z * (_farPlane - _nearPlane));
 #else
-	return nearPlane / (farPlane - z * (farPlane - nearPlane));
+	return _nearPlane / (_farPlane - z * (_farPlane - _nearPlane));
 #endif
 }
 
-float depth_sample_linear(float2 uv, float nearPlane, float farPlane)
+float depth_sample_linear(float2 uv, float _nearPlane, float _farPlane)
 {
-	return resolve_linear_depth(nearPlane, farPlane, texture2D(s_depthBuffer, uv).x);
+	return resolve_linear_depth(_nearPlane, _farPlane, texture2D(s_depthBuffer, uv).x);
 }
 
 float3 find_closet_fragment_3x3(float2 uv)

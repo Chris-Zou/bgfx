@@ -259,6 +259,9 @@ namespace TAA
 
 			u_depthBufferHandle = bgfx::createUniform("s_depthBuffer", bgfx::UniformType::Sampler);
 			u_depthResolveHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
+			m_nearFarPlaneHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
+			m_texelSizeHandle = bgfx::createUniform("texelSize", bgfx::UniformType::Vec4);
+			m_prevVPHandle = bgfx::createUniform("u_prevVP", bgfx::UniformType::Mat4);
 
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
@@ -295,9 +298,28 @@ namespace TAA
 			bgfx::setUniform(u_depthResolveHandle, params);
 		}
 
+		void setMotionBlurUniforms(uint16_t _width, uint16_t _height)
+		{
+			float params[4] = { 0.0f };
+			params[0] = m_nearPlane;
+			params[1] = m_farPlane;
+
+			bgfx::setUniform(m_nearFarPlaneHandle, params);
+
+			float tSize[4] = {0.0f};
+			tSize[0] = float(_width);
+			tSize[1] = float(_height);
+			tSize[2] = 1.0f / float(_width);
+			tSize[3] = 1.0f / float(_height);
+
+			bgfx::setUniform(m_texelSizeHandle, tSize);
+			bgfx::setUniform(m_prevVPHandle, m_prevVPMatrix);
+		}
+
 		virtual int shutdown() override
 		{
-			if (m_isComputeSupported) {
+			if (m_isComputeSupported)
+			{
 				if (bgfx::isValid(m_hdrFrameBuffer))
 				{
 					bgfx::destroy(m_hdrFrameBuffer);
@@ -308,13 +330,13 @@ namespace TAA
 					bgfx::destroy(m_gBuffer);
 				}
 
-				if (bgfx::isValid(m_lightGBuffer)) {
+				if (bgfx::isValid(m_lightGBuffer))
+				{
 					bgfx::destroy(m_lightGBuffer);
 				}
 
 				m_toneMapPass.destroy();
 
-				// Cleanup.
 				destroy(m_pbrUniforms);
 				destroy(m_deferredSceneUniforms);
 				destroy(m_pointLightUniforms);
@@ -330,7 +352,6 @@ namespace TAA
 				imguiDestroy();
 			}
 
-			// Shutdown bgfx.
 			bgfx::shutdown();
 
 			return 0;
@@ -443,6 +464,18 @@ namespace TAA
 			);
 			m_copyHistFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_historyRT), m_historyRT, false);
 			bgfx::setName(m_historyRT[0], "Copy Buffer");
+
+			m_motionBlurRT[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
+			m_motionBlurRT[1] = bgfx::createTexture2D(
+				uint16_t(m_width)
+				, uint16_t(m_height)
+				, false
+				, 1
+				, depthFormat
+				, textureFlags
+			);
+			m_motionBlurFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_historyRT), m_historyRT, false);
+			bgfx::setName(m_motionBlurRT[0], "MotionBlur Buffer");
 		}
 
 		bool update() override
@@ -523,12 +556,17 @@ namespace TAA
 			m_time += deltaTime;
 
 			float proj[16];
-			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), 0.1f, 1000.0f, bgfx::getCaps()->homogeneousDepth);
+			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), m_nearPlane, m_farPlane, bgfx::getCaps()->homogeneousDepth);
 
 			float view[16];
 
 			cameraUpdate(0.1f * deltaTime, m_mouseState);
 			cameraGetViewMtx(view);
+			if (m_isFirstFrame)
+			{
+				memcpy(m_prevVPMatrix, view, 16);
+				m_isFirstFrame = false;
+			}
 
 			bgfx::setViewTransform(meshPass, view, proj);
 
@@ -661,9 +699,25 @@ namespace TAA
 			bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
 			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
 
-			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, copyPass + 1);
+			bgfx::ViewId motionBlurPass = copyPass + 1;
+			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CCW);
+			Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+			bgfx::setViewTransform(motionBlurPass, nullptr, orthoProjection);
+			bgfx::setTexture(0, u_depthBufferHandle, m_gbufferTex[3], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+			bgfx::setViewName(motionBlurPass, "Motion Blur");
+			bgfx::setViewRect(motionBlurPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
+			bgfx::setViewFrameBuffer(motionBlurPass, m_motionBlurFrameBuffer);
+			setMotionBlurUniforms(m_width, m_height);
+			bgfx::submit(motionBlurPass, m_velocityBufferProgram);
+
+			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, motionBlurPass + 1);
 
 			bgfx::frame();
+
+			if (!m_isFirstFrame)
+			{
+				memcpy(m_prevVPMatrix, view, sizeof(view));
+			}
 
 			return true;
 		}
@@ -706,6 +760,9 @@ namespace TAA
 		bgfx::TextureHandle m_historyRT[2];
 		bgfx::FrameBufferHandle m_copyHistFrameBuffer = BGFX_INVALID_HANDLE;
 
+		bgfx::TextureHandle m_motionBlurRT[2];
+		bgfx::FrameBufferHandle m_motionBlurFrameBuffer = BGFX_INVALID_HANDLE;
+
 		bgfx::UniformHandle u_historyBufferHandle = BGFX_INVALID_HANDLE;
 
 		bgfx::UniformHandle u_depthBufferHandle = BGFX_INVALID_HANDLE;
@@ -721,6 +778,17 @@ namespace TAA
 		float m_time;
 
 		bool m_isComputeSupported = true;
+
+		float m_nearPlane = 0.1f;
+		float m_farPlane = 1000.0f;
+
+		bgfx::UniformHandle m_nearFarPlaneHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle m_texelSizeHandle = BGFX_INVALID_HANDLE;
+
+		float m_prevVPMatrix[16];
+		bgfx::UniformHandle m_prevVPHandle = BGFX_INVALID_HANDLE;
+
+		bool m_isFirstFrame = true;
 	};
 
 } // namespace
