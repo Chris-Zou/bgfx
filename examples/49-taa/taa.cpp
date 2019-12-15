@@ -261,7 +261,11 @@ namespace TAA
 			u_depthResolveHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
 			m_nearFarPlaneHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
 			m_texelSizeHandle = bgfx::createUniform("texelSize", bgfx::UniformType::Vec4);
-			m_prevVPHandle = bgfx::createUniform("u_prevVP", bgfx::UniformType::Mat4);
+
+			u_prevVHandle = bgfx::createUniform("u_prevV", bgfx::UniformType::Mat4);
+			u_prevPHandle = bgfx::createUniform("u_prevP", bgfx::UniformType::Mat4);
+			u_invPrevVHandle = bgfx::createUniform("u_invPrevV", bgfx::UniformType::Mat4);
+			u_invPrevPHandle = bgfx::createUniform("u_invPrevP", bgfx::UniformType::Mat4);
 
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
@@ -313,7 +317,11 @@ namespace TAA
 			tSize[3] = 1.0f / float(_height);
 
 			bgfx::setUniform(m_texelSizeHandle, tSize);
-			bgfx::setUniform(m_prevVPHandle, m_prevVPMatrix);
+
+			bgfx::setUniform(u_prevVHandle, m_prevV);
+			bgfx::setUniform(u_prevPHandle, m_prevP);
+			bgfx::setUniform(u_invPrevVHandle, m_invPrevV);
+			bgfx::setUniform(u_invPrevPHandle, m_invPrevP);
 		}
 
 		virtual int shutdown() override
@@ -564,7 +572,10 @@ namespace TAA
 			cameraGetViewMtx(view);
 			if (m_isFirstFrame)
 			{
-				memcpy(m_prevVPMatrix, view, 16);
+				memcpy(m_prevV, view, sizeof(view));
+				memcpy(m_prevP, proj, sizeof(proj));
+				bx::mtxInverse(m_invPrevP, m_prevP);
+				bx::mtxInverse(m_invPrevV, m_prevV);
 				m_isFirstFrame = false;
 			}
 
@@ -707,7 +718,7 @@ namespace TAA
 			bgfx::setViewName(motionBlurPass, "Motion Blur");
 			bgfx::setViewRect(motionBlurPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
 			bgfx::setViewFrameBuffer(motionBlurPass, m_motionBlurFrameBuffer);
-			setMotionBlurUniforms(m_width, m_height);
+			setMotionBlurUniforms(uint16_t(m_width), uint16_t(m_height));
 			bgfx::submit(motionBlurPass, m_velocityBufferProgram);
 
 			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, motionBlurPass + 1);
@@ -716,7 +727,10 @@ namespace TAA
 
 			if (!m_isFirstFrame)
 			{
-				memcpy(m_prevVPMatrix, view, sizeof(view));
+				memcpy(m_prevV, view, sizeof(view));
+				memcpy(m_prevP, proj, sizeof(proj));
+				bx::mtxInverse(m_invPrevP, m_prevP);
+				bx::mtxInverse(m_invPrevV, m_prevV);
 			}
 
 			return true;
@@ -769,7 +783,11 @@ namespace TAA
 		bgfx::UniformHandle u_depthResolveHandle = BGFX_INVALID_HANDLE;
 
 		bgfx::UniformHandle u_prevVPHandle = BGFX_INVALID_HANDLE;
-		bgfx::UniformHandle u_prevMHandle = BGFX_INVALID_HANDLE;
+
+		bgfx::UniformHandle u_prevVHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_prevPHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_invPrevVHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_invPrevPHandle = BGFX_INVALID_HANDLE;
 
 		Dolphin::ToneMapParams m_toneMapParams;
 		Dolphin::ToneMapping m_toneMapPass;
@@ -785,8 +803,10 @@ namespace TAA
 		bgfx::UniformHandle m_nearFarPlaneHandle = BGFX_INVALID_HANDLE;
 		bgfx::UniformHandle m_texelSizeHandle = BGFX_INVALID_HANDLE;
 
-		float m_prevVPMatrix[16];
-		bgfx::UniformHandle m_prevVPHandle = BGFX_INVALID_HANDLE;
+		float m_prevV[16];
+		float m_prevP[16];
+		float m_invPrevV[16];
+		float m_invPrevP[16];
 
 		bool m_isFirstFrame = true;
 	};
