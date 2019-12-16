@@ -267,6 +267,11 @@ namespace TAA
 			u_invCurrVHandle = bgfx::createUniform("u_invCurrV", bgfx::UniformType::Mat4);
 			u_invCurrPHandle = bgfx::createUniform("u_invCurrP", bgfx::UniformType::Mat4);
 
+			u_params = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
+			u_texelSize = bgfx::createUniform("texelSize", bgfx::UniformType::Vec4);
+			u_timeMotionScale = bgfx::createUniform("sinTimeMotionScale", bgfx::UniformType::Vec4);
+			u_jitterUV = bgfx::createUniform("jitterUV", bgfx::UniformType::Vec4);
+
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
 			m_lightSet.init();
@@ -322,6 +327,11 @@ namespace TAA
 			bgfx::setUniform(u_prevPHandle, m_prevP);
 			bgfx::setUniform(u_invCurrVHandle, m_invCurrV);
 			bgfx::setUniform(u_invCurrPHandle, m_invCurrP);
+		}
+
+		void setTaaUniforms()
+		{
+
 		}
 
 		virtual int shutdown() override
@@ -809,6 +819,11 @@ namespace TAA
 		float m_invCurrP[16];
 
 		bool m_isFirstFrame = true;
+
+		bgfx::UniformHandle u_params;
+		bgfx::UniformHandle u_texelSize;
+		bgfx::UniformHandle u_jitterUV;
+		bgfx::UniformHandle u_timeMotionScale;
 	};
 
 } // namespace
