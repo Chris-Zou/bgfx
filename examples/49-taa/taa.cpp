@@ -264,8 +264,8 @@ namespace TAA
 
 			u_prevVHandle = bgfx::createUniform("u_prevV", bgfx::UniformType::Mat4);
 			u_prevPHandle = bgfx::createUniform("u_prevP", bgfx::UniformType::Mat4);
-			u_invPrevVHandle = bgfx::createUniform("u_invPrevV", bgfx::UniformType::Mat4);
-			u_invPrevPHandle = bgfx::createUniform("u_invPrevP", bgfx::UniformType::Mat4);
+			u_invCurrVHandle = bgfx::createUniform("u_invCurrV", bgfx::UniformType::Mat4);
+			u_invCurrPHandle = bgfx::createUniform("u_invCurrP", bgfx::UniformType::Mat4);
 
 			m_model = Dolphin::loadGltfModel("meshes/Sponza/", "Sponza.gltf");
 
@@ -320,8 +320,8 @@ namespace TAA
 
 			bgfx::setUniform(u_prevVHandle, m_prevV);
 			bgfx::setUniform(u_prevPHandle, m_prevP);
-			bgfx::setUniform(u_invPrevVHandle, m_invPrevV);
-			bgfx::setUniform(u_invPrevPHandle, m_invPrevP);
+			bgfx::setUniform(u_invCurrVHandle, m_invCurrV);
+			bgfx::setUniform(u_invCurrPHandle, m_invCurrP);
 		}
 
 		virtual int shutdown() override
@@ -482,7 +482,7 @@ namespace TAA
 				, depthFormat
 				, textureFlags
 			);
-			m_motionBlurFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_historyRT), m_historyRT, false);
+			m_motionBlurFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_motionBlurRT), m_motionBlurRT, false);
 			bgfx::setName(m_motionBlurRT[0], "MotionBlur Buffer");
 		}
 
@@ -574,10 +574,12 @@ namespace TAA
 			{
 				memcpy(m_prevV, view, sizeof(view));
 				memcpy(m_prevP, proj, sizeof(proj));
-				bx::mtxInverse(m_invPrevP, m_prevP);
-				bx::mtxInverse(m_invPrevV, m_prevV);
+				
 				m_isFirstFrame = false;
 			}
+
+			bx::mtxInverse(m_invCurrP, proj);
+			bx::mtxInverse(m_invCurrV, view);
 
 			bgfx::setViewTransform(meshPass, view, proj);
 
@@ -729,8 +731,6 @@ namespace TAA
 			{
 				memcpy(m_prevV, view, sizeof(view));
 				memcpy(m_prevP, proj, sizeof(proj));
-				bx::mtxInverse(m_invPrevP, m_prevP);
-				bx::mtxInverse(m_invPrevV, m_prevV);
 			}
 
 			return true;
@@ -786,8 +786,8 @@ namespace TAA
 
 		bgfx::UniformHandle u_prevVHandle = BGFX_INVALID_HANDLE;
 		bgfx::UniformHandle u_prevPHandle = BGFX_INVALID_HANDLE;
-		bgfx::UniformHandle u_invPrevVHandle = BGFX_INVALID_HANDLE;
-		bgfx::UniformHandle u_invPrevPHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_invCurrVHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_invCurrPHandle = BGFX_INVALID_HANDLE;
 
 		Dolphin::ToneMapParams m_toneMapParams;
 		Dolphin::ToneMapping m_toneMapPass;
@@ -805,8 +805,8 @@ namespace TAA
 
 		float m_prevV[16];
 		float m_prevP[16];
-		float m_invPrevV[16];
-		float m_invPrevP[16];
+		float m_invCurrV[16];
+		float m_invCurrP[16];
 
 		bool m_isFirstFrame = true;
 	};

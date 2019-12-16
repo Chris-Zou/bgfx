@@ -10,8 +10,8 @@ uniform vec4 texelSize;
 uniform vec4 u_params;
 uniform mat4 u_prevV;
 uniform mat4 u_prevP;
-uniform mat4 u_invPrevV;
-uniform mat4 u_invPrevP;
+uniform mat4 u_invCurrV;
+uniform mat4 u_invCurrP;
 
 #define nearPlane u_params.x
 #define farPlane u_params.y
@@ -45,7 +45,7 @@ void main()
 	vec4 clip_pos = vec4(vec2(v_ss_tex.x, 1.0 - v_ss_tex.y) * 2.0 - 1.0, depth, 1.0);
 #endif
 
-	mat4 mat_vp = mul(u_invPrevV, u_invPrevP);
+	mat4 mat_vp = mul(u_invCurrV, u_invCurrP);
 	vec4 vs_pos = mul(mat_vp, clip_pos);
 	vs_pos /= vs_pos.w;
 
@@ -59,5 +59,5 @@ void main()
 	rp_ss_tex.y = 1.0 - rp_ss_tex.y;
 	vec2 ss_vel = v_ss_tex - rp_ss_tex;
 
-	gl_FragColor = vec4(ss_vel, 0.0, 0.0);
+	gl_FragColor = vec4(ss_vel, 0.0, 1.0);
 }
