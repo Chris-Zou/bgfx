@@ -258,9 +258,6 @@ namespace TAA
 			u_historyBufferHandle = bgfx::createUniform("s_historyBuffer", bgfx::UniformType::Sampler);
 
 			u_depthBufferHandle = bgfx::createUniform("s_depthBuffer", bgfx::UniformType::Sampler);
-			u_depthResolveHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
-			m_nearFarPlaneHandle = bgfx::createUniform("u_params", bgfx::UniformType::Vec4);
-			m_texelSizeHandle = bgfx::createUniform("texelSize", bgfx::UniformType::Vec4);
 
 			u_prevVHandle = bgfx::createUniform("u_prevV", bgfx::UniformType::Mat4);
 			u_prevPHandle = bgfx::createUniform("u_prevP", bgfx::UniformType::Mat4);
@@ -298,31 +295,8 @@ namespace TAA
 			m_time = 0.0f;
 		}
 
-		void setDepthResolveUnifroms(float nearPlane, float farPlane)
-		{
-			float params[4] = {0.0f};
-			params[0] = nearPlane;
-			params[1] = farPlane;
-
-			bgfx::setUniform(u_depthResolveHandle, params);
-		}
-
 		void setMotionBlurUniforms(uint16_t _width, uint16_t _height)
 		{
-			float params[4] = { 0.0f };
-			params[0] = m_nearPlane;
-			params[1] = m_farPlane;
-
-			bgfx::setUniform(m_nearFarPlaneHandle, params);
-
-			float tSize[4] = {0.0f};
-			tSize[0] = float(_width);
-			tSize[1] = float(_height);
-			tSize[2] = 1.0f / float(_width);
-			tSize[3] = 1.0f / float(_height);
-
-			bgfx::setUniform(m_texelSizeHandle, tSize);
-
 			bgfx::setUniform(u_prevVHandle, m_prevV);
 			bgfx::setUniform(u_prevPHandle, m_prevP);
 			bgfx::setUniform(u_invCurrVHandle, m_invCurrV);
@@ -733,7 +707,7 @@ namespace TAA
 			setMotionBlurUniforms(uint16_t(m_width), uint16_t(m_height));
 			bgfx::submit(motionBlurPass, m_velocityBufferProgram);
 
-			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, motionBlurPass + 1);
+			m_toneMapPass.render(m_motionBlurRT[0], m_toneMapParams, deltaTime, motionBlurPass + 1);
 
 			bgfx::frame();
 
@@ -790,7 +764,6 @@ namespace TAA
 		bgfx::UniformHandle u_historyBufferHandle = BGFX_INVALID_HANDLE;
 
 		bgfx::UniformHandle u_depthBufferHandle = BGFX_INVALID_HANDLE;
-		bgfx::UniformHandle u_depthResolveHandle = BGFX_INVALID_HANDLE;
 
 		bgfx::UniformHandle u_prevVPHandle = BGFX_INVALID_HANDLE;
 
@@ -809,9 +782,6 @@ namespace TAA
 
 		float m_nearPlane = 0.1f;
 		float m_farPlane = 1000.0f;
-
-		bgfx::UniformHandle m_nearFarPlaneHandle = BGFX_INVALID_HANDLE;
-		bgfx::UniformHandle m_texelSizeHandle = BGFX_INVALID_HANDLE;
 
 		float m_prevV[16];
 		float m_prevP[16];

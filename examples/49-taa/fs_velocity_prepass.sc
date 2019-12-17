@@ -3,18 +3,13 @@ $input v_cs_pos, v_ss_tex, v_ray
 #include "../common/common.sh"
 
 SAMPLER2D(s_depthBuffer, 0);
-uniform vec4 texelSize;
 
 #include "depth_libs.sh"
 
-uniform vec4 u_params;
 uniform mat4 u_prevV;
 uniform mat4 u_prevP;
 uniform mat4 u_invCurrV;
 uniform mat4 u_invCurrP;
-
-#define nearPlane u_params.x
-#define farPlane u_params.y
 
 /*
 https://stackoverflow.com/questions/32227283/getting-world-position-from-depth-buffer-value

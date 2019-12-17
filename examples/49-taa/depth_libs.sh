@@ -48,30 +48,30 @@ float resolve_linear_depth(float _nearPlane, float _farPlane, float z)
 #endif
 }
 
-float depth_sample_linear(float2 uv, float _nearPlane, float _farPlane)
+float depth_sample_linear(vec2 uv, float _nearPlane, float _farPlane)
 {
 	return resolve_linear_depth(_nearPlane, _farPlane, texture2D(s_depthBuffer, uv).x);
 }
 
-float3 find_closet_fragment_3x3(float2 uv)
+vec3 find_closet_fragment_3x3(vec2 uv, vec4 _texelSize)
 {
-	float2 dd = abs(texelSize.xy);
-	float2 du = float2(dd.x, 0.0);
-	float2 dv = float2(0.0, dd.y);
+	vec2 dd = abs(_texelSize.xy);
+	vec2 du = vec2(dd.x, 0.0);
+	vec2 dv = vec2(0.0, dd.y);
 
-	float3 dtl = float3(-1, -1, texture2D(s_depthBuffer, uv - du - dv).x);
-	float3 dtc = float3( 0, -1, texture2D(s_depthBuffer, uv      - dv).x);
-	float3 dtr = float3( 1, -1, texture2D(s_depthBuffer, uv + du - dv).x);
+	vec3 dtl = vec3(-1, -1, texture2D(s_depthBuffer, uv - du - dv).x);
+	vec3 dtc = vec3( 0, -1, texture2D(s_depthBuffer, uv      - dv).x);
+	vec3 dtr = vec3( 1, -1, texture2D(s_depthBuffer, uv + du - dv).x);
 
-	float3 dml = float3(-1,  0, texture2D(s_depthBuffer, uv - du     ).x);
-	float3 dmc = float3( 0,  0, texture2D(s_depthBuffer, uv          ).x);
-	float3 dmr = float3( 1,  0, texture2D(s_depthBuffer, uv + du     ).x);
+	vec3 dml = vec3(-1,  0, texture2D(s_depthBuffer, uv - du     ).x);
+	vec3 dmc = vec3( 0,  0, texture2D(s_depthBuffer, uv          ).x);
+	vec3 dmr = vec3( 1,  0, texture2D(s_depthBuffer, uv + du     ).x);
 
-	float3 dbl = float3(-1,  1, texture2D(s_depthBuffer, uv - du + dv).x);
-	float3 dbc = float3( 0,  1, texture2D(s_depthBuffer, uv      + dv).x);
-	float3 dbr = float3( 1,  1, texture2D(s_depthBuffer, uv + du + dv).x);
+	vec3 dbl = vec3(-1,  1, texture2D(s_depthBuffer, uv - du + dv).x);
+	vec3 dbc = vec3( 0,  1, texture2D(s_depthBuffer, uv      + dv).x);
+	vec3 dbr = vec3( 1,  1, texture2D(s_depthBuffer, uv + du + dv).x);
 
-	float3 dmin = dtl;
+	vec3 dmin = dtl;
 	if(dmin.z > dtc.z) dmin = dtc;
 	if(dmin.z > dtr.z) dmin = dtr;
 	if(dmin.z > dml.z) dmin = dml;
@@ -81,7 +81,7 @@ float3 find_closet_fragment_3x3(float2 uv)
 	if(dmin.z > dbc.z) dmin = dbc;
 	if(dmin.z > dbr.z) dmin = dbr;
 
-	return float3(uv + dd.xy * dmin.xy, dmin.z);
+	return vec3(uv + dd.xy * dmin.xy, dmin.z);
 }
 
 #endif // _DEPTH_LIBS_SH_

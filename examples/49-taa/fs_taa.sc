@@ -270,7 +270,7 @@ void main()
 #if USE_DILATION
 
 	//--- 3x3 nearest (good)
-	vec3 c_frag = find_closet_fragment_3x3(uv);
+	vec3 c_frag = find_closet_fragment_3x3(uv, texelSize);
 	vec2 ss_vel = texture2D(s_velocityBuffer, c_frag.xy).xy;
 	float vs_dist = resolve_linear_depth(nearPlane, farPlane, c_frag.z);
 #else
