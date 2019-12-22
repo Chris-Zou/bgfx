@@ -515,6 +515,7 @@ or _OPTIONS["with-combined-examples"] then
 		, "47-AtmosphereScattering"
 		, "48-DolphinEngine"
 		, "49-taa"
+		, "50-parallax"
 		)
 
 	-- C99 source doesn't compile under WinRT settings
