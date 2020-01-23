@@ -545,7 +545,7 @@ namespace TAA
 			last = now;
 			const double freq = double(bx::getHPFrequency());
 			const float deltaTime = (float)(frameTime / freq);
-			m_time += deltaTime;
+			//m_time += deltaTime;
 
 			float proj[16];
 			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), m_nearPlane, m_farPlane, bgfx::getCaps()->homogeneousDepth);
@@ -707,7 +707,7 @@ namespace TAA
 			setMotionBlurUniforms(uint16_t(m_width), uint16_t(m_height));
 			bgfx::submit(motionBlurPass, m_velocityBufferProgram);
 
-			m_toneMapPass.render(m_motionBlurRT[0], m_toneMapParams, deltaTime, motionBlurPass + 1);
+			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, motionBlurPass + 1);
 
 			bgfx::frame();
 
