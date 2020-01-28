@@ -259,6 +259,10 @@ namespace TAA
 
 			u_depthBufferHandle = bgfx::createUniform("s_depthBuffer", bgfx::UniformType::Sampler);
 
+			u_mainTexBufferHandle = bgfx::createUniform("s_mainTex", bgfx::UniformType::Sampler);
+			u_velocityBufferHandle = bgfx::createUniform("s_velocityBuffer", bgfx::UniformType::Sampler);
+			u_prevBufferHandle = bgfx::createUniform("s_prevBuffer", bgfx::UniformType::Sampler);
+
 			u_prevVHandle = bgfx::createUniform("u_prevV", bgfx::UniformType::Mat4);
 			u_prevPHandle = bgfx::createUniform("u_prevP", bgfx::UniformType::Mat4);
 			u_invCurrVHandle = bgfx::createUniform("u_invCurrV", bgfx::UniformType::Mat4);
@@ -303,7 +307,7 @@ namespace TAA
 			bgfx::setUniform(u_invCurrPHandle, m_invCurrP);
 		}
 
-		void setTaaUniforms()
+		void setTaaUniforms(uint16_t _width, uint16_t _height)
 		{
 
 		}
@@ -468,6 +472,18 @@ namespace TAA
 			);
 			m_motionBlurFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_motionBlurRT), m_motionBlurRT, false);
 			bgfx::setName(m_motionBlurRT[0], "MotionBlur Buffer");
+
+			m_taaRT[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
+			m_taaRT[1] = bgfx::createTexture2D(
+				uint16_t(m_width)
+				, uint16_t(m_height)
+				, false
+				, 1
+				, depthFormat
+				, textureFlags
+			);
+			m_taaFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_taaRT), m_taaRT, false);
+			bgfx::setName(m_taaRT[0], "TAA Buffer");
 		}
 
 		bool update() override
@@ -515,6 +531,7 @@ namespace TAA
 			int numActiveLights = int32_t(m_lightSet.numActiveLights);
 			ImGui::SliderInt("Num lights", &numActiveLights, 1, int(m_lightSet.maxNumLights));
 			ImGui::DragFloat("Total Brightness", &m_totalBirghtness, 0.5f, 0.0f, 250.0f);
+			ImGui::Checkbox("UseTAA", &m_bUseTAA);
 
 			ImGui::End();
 
@@ -696,18 +713,39 @@ namespace TAA
 			bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
 			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
 
-			bgfx::ViewId motionBlurPass = copyPass + 1;
+			bgfx::ViewId motionVectorPass = copyPass + 1;
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CCW);
 			Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
-			bgfx::setViewTransform(motionBlurPass, nullptr, orthoProjection);
+			bgfx::setViewTransform(motionVectorPass, nullptr, orthoProjection);
 			bgfx::setTexture(0, u_depthBufferHandle, m_gbufferTex[3], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
-			bgfx::setViewName(motionBlurPass, "Motion Blur");
-			bgfx::setViewRect(motionBlurPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
-			bgfx::setViewFrameBuffer(motionBlurPass, m_motionBlurFrameBuffer);
+			bgfx::setViewName(motionVectorPass, "Motion Blur");
+			bgfx::setViewRect(motionVectorPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
+			bgfx::setViewFrameBuffer(motionVectorPass, m_motionBlurFrameBuffer);
 			setMotionBlurUniforms(uint16_t(m_width), uint16_t(m_height));
-			bgfx::submit(motionBlurPass, m_velocityBufferProgram);
+			bgfx::submit(motionVectorPass, m_velocityBufferProgram);
 
-			m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, motionBlurPass + 1);
+			if (m_bUseTAA)
+			{
+				bgfx::ViewId taaPass = motionVectorPass + 1;
+				bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CCW);
+				Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+				bgfx::setViewTransform(taaPass, nullptr, orthoProjection);
+				bgfx::setTexture(0, u_mainTexBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+				bgfx::setTexture(1, u_velocityBufferHandle, m_motionBlurRT[0], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+				bgfx::setTexture(2, u_prevBufferHandle, m_historyRT[0], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+				bgfx::setTexture(3, u_depthBufferHandle, m_gbufferTex[3], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+				bgfx::setViewName(taaPass, "Temporal Anti Aliasing");
+				bgfx::setViewRect(taaPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
+				bgfx::setViewFrameBuffer(taaPass, m_taaFrameBuffer);
+				setTaaUniforms(uint16_t(m_width), uint16_t(m_height));
+				bgfx::submit(taaPass, m_taaProgram);
+
+				m_toneMapPass.render(m_taaRT[0], m_toneMapParams, deltaTime, taaPass + 1);
+			}
+			else
+			{
+				m_toneMapPass.render(m_gbufferTex[4], m_toneMapParams, deltaTime, motionVectorPass + 1);
+			}
 
 			bgfx::frame();
 
@@ -748,6 +786,8 @@ namespace TAA
 		LightSet m_lightSet;
 		float m_totalBirghtness = 1.0f;
 
+		bool m_bUseTAA = false;
+
 		bgfx::FrameBufferHandle m_gBuffer = BGFX_INVALID_HANDLE;
 		bgfx::FrameBufferHandle m_lightGBuffer = BGFX_INVALID_HANDLE;
 		bgfx::TextureHandle m_gbufferTex[6];
@@ -761,6 +801,9 @@ namespace TAA
 		bgfx::TextureHandle m_motionBlurRT[2];
 		bgfx::FrameBufferHandle m_motionBlurFrameBuffer = BGFX_INVALID_HANDLE;
 
+		bgfx::TextureHandle m_taaRT[2];
+		bgfx::FrameBufferHandle m_taaFrameBuffer = BGFX_INVALID_HANDLE;
+
 		bgfx::UniformHandle u_historyBufferHandle = BGFX_INVALID_HANDLE;
 
 		bgfx::UniformHandle u_depthBufferHandle = BGFX_INVALID_HANDLE;
@@ -772,6 +815,10 @@ namespace TAA
 		bgfx::UniformHandle u_invCurrVHandle = BGFX_INVALID_HANDLE;
 		bgfx::UniformHandle u_invCurrPHandle = BGFX_INVALID_HANDLE;
 
+		bgfx::UniformHandle u_mainTexBufferHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_velocityBufferHandle = BGFX_INVALID_HANDLE;
+		bgfx::UniformHandle u_prevBufferHandle = BGFX_INVALID_HANDLE;
+		
 		Dolphin::ToneMapParams m_toneMapParams;
 		Dolphin::ToneMapping m_toneMapPass;
 
