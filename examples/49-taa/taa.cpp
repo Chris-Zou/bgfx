@@ -297,6 +297,8 @@ namespace TAA
 			m_oldReset = m_reset;
 
 			m_time = 0.0f;
+
+			initHaltonPattern();
 		}
 
 		void setMotionBlurUniforms(uint16_t _width, uint16_t _height)
@@ -310,6 +312,65 @@ namespace TAA
 		void setTaaUniforms(uint16_t _width, uint16_t _height)
 		{
 
+		}
+
+		float haltonSequence(int prime, int index = 1)
+		{
+			float r = 0.0f;
+			float f = 1.0f;
+			int i = index;
+
+			while (i > 0)
+			{
+				f /= prime;
+				r += f * (i % prime);
+				i = (int)glm::floor(i / (float)prime);
+			}
+
+			return r;
+		}
+
+		void initHaltonPattern()
+		{
+			for (int i = 0, n = 32 / 2; i != n; ++i)
+			{
+				float u = haltonSequence(2, i + 1) - 0.5f;
+				float v = haltonSequence(3, i + 1) - 0.5f;
+				m_halton_pattern[2 * i + 0] = u;
+				m_halton_pattern[2 * i + 1] = v;
+			}
+		}
+
+		glm::vec2 sampleHaltonSequence(int index)
+		{
+			int n = 32 / 2;
+			int i = index % n;
+
+			float x = m_halton_pattern[2 * i + 0];
+			float y = m_halton_pattern[2 * i + 1];
+
+			return glm::vec2(x, y);
+		}
+
+		void updateJitterData()
+		{
+			if (m_activeIndex == -2)
+			{
+				m_activeSample = glm::vec4();
+				m_activeIndex += 1;
+			}
+			else
+			{
+				m_activeIndex += 1;
+				m_activeIndex %= (32 / 2);
+
+
+				glm::vec2 sample = sampleHaltonSequence(m_activeIndex);
+				m_activeSample.z = m_activeSample.x;
+				m_activeSample.w = m_activeSample.y;
+				m_activeSample.x = sample.x;
+				m_activeSample.y = sample.y;
+			}
 		}
 
 		virtual int shutdown() override
@@ -841,6 +902,11 @@ namespace TAA
 		bgfx::UniformHandle u_texelSize;
 		bgfx::UniformHandle u_jitterUV;
 		bgfx::UniformHandle u_timeMotionScale;
+
+		//unjitter data
+		glm::vec4 m_activeSample;
+		int m_activeIndex = -2;
+		float m_halton_pattern[32];
 	};
 
 } // namespace
