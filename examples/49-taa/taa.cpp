@@ -431,6 +431,54 @@ namespace TAA
 				destroy(m_model);
 				m_lightSet.destroy();
 
+				if (bgfx::isValid(m_copyHistoryBufferProgram))
+					bgfx::destroy(m_copyHistoryBufferProgram);
+
+				if(bgfx::isValid(m_velocityBufferProgram))
+					bgfx::destroy(m_velocityBufferProgram);
+
+				if (bgfx::isValid(m_taaProgram))
+					bgfx::destroy(m_taaProgram);
+
+				if (bgfx::isValid(m_copyHistFrameBuffer))
+					bgfx::destroy(m_copyHistFrameBuffer);
+
+				if (bgfx::isValid(m_motionBlurFrameBuffer))
+					bgfx::destroy(m_motionBlurFrameBuffer);
+
+				if (bgfx::isValid(m_taaFrameBuffer))
+					bgfx::destroy(m_taaFrameBuffer);
+
+				if (bgfx::isValid(u_historyBufferHandle))
+					bgfx::destroy(u_historyBufferHandle);
+
+				if (bgfx::isValid(u_depthBufferHandle))
+					bgfx::destroy(u_depthBufferHandle);
+
+				if (bgfx::isValid(u_prevVPHandle))
+					bgfx::destroy(u_prevVPHandle);
+
+				if (bgfx::isValid(u_prevVHandle))
+					bgfx::destroy(u_prevVHandle);
+
+				if (bgfx::isValid(u_prevPHandle))
+					bgfx::destroy(u_prevPHandle);
+
+				if (bgfx::isValid(u_invCurrVHandle))
+					bgfx::destroy(u_invCurrVHandle);
+
+				if (bgfx::isValid(u_invCurrPHandle))
+					bgfx::destroy(u_invCurrPHandle);
+
+				if (bgfx::isValid(u_mainTexBufferHandle))
+					bgfx::destroy(u_mainTexBufferHandle);
+
+				if (bgfx::isValid(u_velocityBufferHandle))
+					bgfx::destroy(u_velocityBufferHandle);
+
+				if (bgfx::isValid(u_prevBufferHandle))
+					bgfx::destroy(u_prevBufferHandle);
+
 				cameraDestroy();
 
 				imguiDestroy();
