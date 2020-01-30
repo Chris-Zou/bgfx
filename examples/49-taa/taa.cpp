@@ -311,7 +311,34 @@ namespace TAA
 
 		void setTaaUniforms(uint16_t _width, uint16_t _height)
 		{
+			float tmpJitterSample[4];
+			tmpJitterSample[0] = m_activeSample[0] / _width;
+			tmpJitterSample[1] = m_activeSample[1] / _height;
+			tmpJitterSample[2] = m_activeSample[2] / _width;
+			tmpJitterSample[3] = m_activeSample[3] / _height;
+			bgfx::setUniform(u_jitterUV, &tmpJitterSample[0]);
 
+			float params[4];
+			params[0] = m_nearPlane;
+			params[1] = m_farPlane;
+			params[2] = 0.88f;
+			params[3] = 0.97f;
+			bgfx::setUniform(u_params, params);
+
+			float sintime[4];
+			sintime[0] = 0.0f;
+			sintime[1] = 0.0f;
+			sintime[2] = 1.0f;
+			sintime[3] = 0.0f;
+			bgfx::setUniform(u_timeMotionScale, sintime);
+
+			float texelSize[4];
+			texelSize[0] = 1.0f / (float)_width;
+			texelSize[1] = 1.0f / (float)_height;
+			texelSize[2] = (float)_width;
+			texelSize[3] = (float)_height;
+
+			bgfx::setUniform(u_texelSize, texelSize);
 		}
 
 		float haltonSequence(int prime, int index = 1)
@@ -597,6 +624,9 @@ namespace TAA
 			ImGui::End();
 
 			imguiEndFrame();
+
+			// update camera jitter data
+			updateJitterData();
 
 			bgfx::ViewId meshPass = 0;
 			bgfx::setViewRect(meshPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
