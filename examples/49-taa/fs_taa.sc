@@ -2,7 +2,7 @@ $input v_cs_pos, v_ss_tex
 
 #include "../common/common.sh"
 
-#define FLT_EPS 0.00001
+#define FLT_EPS 0.000001
 
 #define MINMAX_3X3_ROUNDED 1
 #define UNJITTER_COLORSAMPLES 1
@@ -310,6 +310,6 @@ void main()
 
 	// add noise
 	vec4 noise4 = srand4(v_ss_tex + sinTime.x + 0.6959174) / 510.0;
-	gl_FragData[0] = saturate(to_buffer + noise4);
-	gl_FragData[1] = saturate(to_screen + noise4);
+	gl_FragData[0] = saturate(to_screen + noise4);
+	gl_FragData[1] = saturate(to_buffer + noise4);
 }

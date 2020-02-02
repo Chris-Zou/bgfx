@@ -905,7 +905,7 @@ namespace TAA
 				bgfx::setViewTransform(taaPass, nullptr, orthoProjection);
 				bgfx::setTexture(0, u_mainTexBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
 				bgfx::setTexture(1, u_velocityBufferHandle, m_motionBlurRT[0], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
-				bgfx::setTexture(2, u_prevBufferHandle, m_historyRT[0], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+				bgfx::setTexture(2, u_prevBufferHandle, m_reprojectionRT[m_reprojectionRTIndex], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
 				bgfx::setTexture(3, u_depthBufferHandle, m_gbufferTex[3], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
 				bgfx::setViewName(taaPass, "Temporal Anti Aliasing");
 				bgfx::setViewRect(taaPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
@@ -972,7 +972,7 @@ namespace TAA
 		LightSet m_lightSet;
 		float m_totalBirghtness = 1.0f;
 
-		bool m_bUseTAA = false;
+		bool m_bUseTAA = true;
 
 		bgfx::FrameBufferHandle m_gBuffer = BGFX_INVALID_HANDLE;
 		bgfx::FrameBufferHandle m_lightGBuffer = BGFX_INVALID_HANDLE;
