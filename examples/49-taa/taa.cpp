@@ -536,14 +536,24 @@ namespace TAA
 			m_gbufferTex[3] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::R32F, BGFX_TEXTURE_RT | tsFlags);
 			m_gbufferTex[4] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
 
+			bgfx::setName(m_gbufferTex[0], "Albedo & Roughness");
+			bgfx::setName(m_gbufferTex[1], "Normal & Metalness");
+			bgfx::setName(m_gbufferTex[2], "Emissive & Occlusion");
+			bgfx::setName(m_gbufferTex[3], "Depth");
+			bgfx::setName(m_gbufferTex[4], "Final Radiance");
+
 			gbufferAt[0].init(m_gbufferTex[0]);
 			gbufferAt[1].init(m_gbufferTex[1]);
 			gbufferAt[2].init(m_gbufferTex[2]);
 			gbufferAt[3].init(m_gbufferTex[3]);
 			gbufferAt[4].init(m_gbufferTex[4]);
 
+
+
 			m_gbufferTex[5] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::D24S8, BGFX_TEXTURE_RT | tsFlags);
 			gbufferAt[5].init(m_gbufferTex[5]);
+
+			bgfx::setName(m_gbufferTex[5], "Depth Stencil");
 
 			m_gBuffer = bgfx::createFrameBuffer(BX_COUNTOF(gbufferAt), gbufferAt, true);
 			m_lightGBuffer = bgfx::createFrameBuffer(2, &gbufferAt[4], false);
@@ -620,6 +630,9 @@ namespace TAA
 			);
 			m_taaFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(m_taaRT), m_taaRT, false);
 			bgfx::setName(m_taaRT[0], "TAA Buffer");
+
+			m_reprojectionRT[0] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
+			m_reprojectionRT[1] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
 		}
 
 		bool update() override
@@ -843,15 +856,36 @@ namespace TAA
 			bgfx::submit(emissivePass, m_emissivePassProgram);
 
 			bgfx::ViewId copyPass = emissivePass + 1;
-			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CCW);
-			Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
-			bgfx::setViewTransform(copyPass, nullptr, orthoProjection);
-			bgfx::setTexture(0, u_historyBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
-			bgfx::setViewName(copyPass, "Copy Framebuffer");
-			bgfx::setViewRect(copyPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
-			bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
-			bgfx::submit(copyPass, m_copyHistoryBufferProgram);
+			if (m_bUseTAA)
+			{
+				if (m_reprojectionRTIndex == -1) //bootstrap
+				{
+					m_reprojectionRTIndex = 0;
+					bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CCW);
+					Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
+					bgfx::setViewTransform(copyPass, nullptr, orthoProjection);
+					bgfx::setTexture(0, u_historyBufferHandle, m_gbufferTex[4], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
+					bgfx::setViewName(copyPass, "Copy Framebuffer");
+					bgfx::setViewRect(copyPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
 
+					if (bgfx::isValid(m_copyHistFrameBuffer))
+					{
+						bgfx::destroy(m_copyHistFrameBuffer);
+					}
+
+					bgfx::Attachment copyPassRT[2];
+					copyPassRT[0].init(m_reprojectionRT[m_reprojectionRTIndex]);
+					copyPassRT[1].init(m_historyRT[1]);
+					m_copyHistFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(copyPassRT), copyPassRT, false);
+					bgfx::setViewFrameBuffer(copyPass, m_copyHistFrameBuffer);
+					bgfx::submit(copyPass, m_copyHistoryBufferProgram);
+				}
+			}
+			else
+			{
+				copyPass = emissivePass;
+			}
+			
 			bgfx::ViewId motionVectorPass = copyPass + 1;
 			bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_CULL_CCW);
 			Dolphin::ToneMapping::setScreenSpaceQuad(float(m_width), float(m_height), m_caps->originBottomLeft);
@@ -875,11 +909,24 @@ namespace TAA
 				bgfx::setTexture(3, u_depthBufferHandle, m_gbufferTex[3], BGFX_SAMPLER_POINT | BGFX_SAMPLER_UVW_CLAMP);
 				bgfx::setViewName(taaPass, "Temporal Anti Aliasing");
 				bgfx::setViewRect(taaPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
+
+				if (bgfx::isValid(m_taaFrameBuffer))
+				{
+					bgfx::destroy(m_taaFrameBuffer);
+				}
+
+				bgfx::Attachment taaAttachment[2];
+				taaAttachment[0].init(m_taaRT[0]);
+				taaAttachment[1].init(m_reprojectionRT[(m_reprojectionRTIndex + 1) % 2]);
+				m_taaFrameBuffer = bgfx::createFrameBuffer(BX_COUNTOF(taaAttachment), taaAttachment, false);
+
 				bgfx::setViewFrameBuffer(taaPass, m_taaFrameBuffer);
 				setTaaUniforms(uint16_t(m_width), uint16_t(m_height));
 				bgfx::submit(taaPass, m_taaProgram);
 
 				m_toneMapPass.render(m_taaRT[0], m_toneMapParams, deltaTime, taaPass + 1);
+
+				m_reprojectionRTIndex = (m_reprojectionRTIndex + 1) % 2;
 			}
 			else
 			{
@@ -942,6 +989,10 @@ namespace TAA
 
 		bgfx::TextureHandle m_taaRT[2];
 		bgfx::FrameBufferHandle m_taaFrameBuffer = BGFX_INVALID_HANDLE;
+
+		bgfx::TextureHandle m_reprojectionRT[2];
+		bgfx::FrameBufferHandle m_reprojectionFrameBuffer = BGFX_INVALID_HANDLE;
+		int m_reprojectionRTIndex = -1;
 
 		bgfx::UniformHandle u_historyBufferHandle = BGFX_INVALID_HANDLE;
 
