@@ -635,6 +635,36 @@ namespace TAA
 			m_reprojectionRT[1] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, bgfx::TextureFormat::RGBA16F, BGFX_TEXTURE_RT | tsFlags);
 		}
 
+		glm::vec4 getProjectionExtents(float texelOffsetX, float texelOffsetY)
+		{
+			float aspect = (float)m_width / (float)m_height;
+
+			float scale = 0.5f;
+
+			float oneExtentY = bx::tan(0.5f * m_cameraFOV * 3.1415926f / 180.0f);
+			float oneExtentX = oneExtentY * aspect;
+			float texelSizeX = oneExtentX / (0.5f * m_width);
+			float texelSizeY = oneExtentY / (0.5f * m_height);
+			float oneJitterX = texelSizeX * texelOffsetX * scale;
+			float oneJitterY = texelSizeY * texelOffsetY * scale;
+
+			return glm::vec4(oneExtentX, oneExtentY, oneJitterX, oneJitterY);
+		}
+
+		void getJitteredProjectionMatrix(float* projMtx, float texelOffsetX, float texelOffsetY)
+		{
+			glm::vec4 extents = getProjectionExtents(texelOffsetX, texelOffsetY);
+
+			float cf = m_farPlane;
+			float cn = m_nearPlane;
+			float xm = extents.z - extents.x;
+			float xp = extents.z + extents.x;
+			float ym = extents.w - extents.y;
+			float yp = extents.w + extents.y;
+
+			bx::mtxProj(projMtx, yp * cn, ym * cn, xm * cn, xp * cn, cn, cf, m_caps->homogeneousDepth);
+		}
+
 		bool update() override
 		{
 			if (entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState)) {
@@ -716,8 +746,11 @@ namespace TAA
 			const float deltaTime = (float)(frameTime / freq);
 			//m_time += deltaTime;
 
+			/*float proj[16];
+			bx::mtxProj(proj, m_cameraFOV, float(m_width) / float(m_height), m_nearPlane, m_farPlane, bgfx::getCaps()->homogeneousDepth);*/
+
 			float proj[16];
-			bx::mtxProj(proj, 60.0f, float(m_width) / float(m_height), m_nearPlane, m_farPlane, bgfx::getCaps()->homogeneousDepth);
+			getJitteredProjectionMatrix(proj, m_activeSample.x, m_activeSample.y);
 
 			float view[16];
 
@@ -1036,6 +1069,8 @@ namespace TAA
 		glm::vec4 m_activeSample;
 		int m_activeIndex = -2;
 		float m_halton_pattern[32];
+
+		float m_cameraFOV = 60.0f;
 	};
 
 } // namespace
