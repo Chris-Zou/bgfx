@@ -301,7 +301,7 @@ namespace TAA
 			initHaltonPattern();
 		}
 
-		void setMotionBlurUniforms(uint16_t _width, uint16_t _height)
+		void setMotionBlurUniforms()
 		{
 			bgfx::setUniform(u_prevVHandle, m_prevV);
 			bgfx::setUniform(u_prevPHandle, m_prevP);
@@ -708,8 +708,8 @@ namespace TAA
 			);
 
 			int numActiveLights = int32_t(m_lightSet.numActiveLights);
-			ImGui::SliderInt("Num lights", &numActiveLights, 1, int(m_lightSet.maxNumLights));
-			ImGui::DragFloat("Total Brightness", &m_totalBirghtness, 0.5f, 0.0f, 250.0f);
+			//ImGui::SliderInt("Num lights", &numActiveLights, 1, int(m_lightSet.maxNumLights));
+			//ImGui::DragFloat("Total Brightness", &m_totalBirghtness, 0.5f, 0.0f, 250.0f);
 			ImGui::Checkbox("UseTAA", &m_bUseTAA);
 
 			ImGui::End();
@@ -927,7 +927,7 @@ namespace TAA
 			bgfx::setViewName(motionVectorPass, "Motion Blur");
 			bgfx::setViewRect(motionVectorPass, 0, 0, uint16_t(m_width), uint16_t(m_height));
 			bgfx::setViewFrameBuffer(motionVectorPass, m_motionBlurFrameBuffer);
-			setMotionBlurUniforms(uint16_t(m_width), uint16_t(m_height));
+			setMotionBlurUniforms();
 			bgfx::submit(motionVectorPass, m_velocityBufferProgram);
 
 			if (m_bUseTAA)
