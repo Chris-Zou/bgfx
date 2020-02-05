@@ -639,14 +639,12 @@ namespace TAA
 		{
 			float aspect = (float)m_width / (float)m_height;
 
-			float scale = 0.5f;
-
 			float oneExtentY = bx::tan(0.5f * m_cameraFOV * 3.1415926f / 180.0f);
 			float oneExtentX = oneExtentY * aspect;
 			float texelSizeX = oneExtentX / (0.5f * m_width);
 			float texelSizeY = oneExtentY / (0.5f * m_height);
-			float oneJitterX = texelSizeX * texelOffsetX * scale;
-			float oneJitterY = texelSizeY * texelOffsetY * scale;
+			float oneJitterX = texelSizeX * texelOffsetX * m_jitterScale;
+			float oneJitterY = texelSizeY * texelOffsetY * m_jitterScale;
 
 			return glm::vec4(oneExtentX, oneExtentY, oneJitterX, oneJitterY);
 		}
@@ -710,6 +708,7 @@ namespace TAA
 			int numActiveLights = int32_t(m_lightSet.numActiveLights);
 			//ImGui::SliderInt("Num lights", &numActiveLights, 1, int(m_lightSet.maxNumLights));
 			//ImGui::DragFloat("Total Brightness", &m_totalBirghtness, 0.5f, 0.0f, 250.0f);
+			ImGui::SliderFloat("Jitter Scale", &m_jitterScale, 0.0f, 1.0f);
 			ImGui::Checkbox("UseTAA", &m_bUseTAA);
 
 			ImGui::End();
@@ -750,7 +749,10 @@ namespace TAA
 			bx::mtxProj(proj, m_cameraFOV, float(m_width) / float(m_height), m_nearPlane, m_farPlane, bgfx::getCaps()->homogeneousDepth);*/
 
 			float proj[16];
-			getJitteredProjectionMatrix(proj, m_activeSample.x, m_activeSample.y);
+			if(m_bUseTAA)
+				getJitteredProjectionMatrix(proj, m_activeSample.x, m_activeSample.y);
+			else
+				bx::mtxProj(proj, m_cameraFOV, float(m_width) / float(m_height), m_nearPlane, m_farPlane, bgfx::getCaps()->homogeneousDepth);
 
 			float view[16];
 
@@ -1071,6 +1073,7 @@ namespace TAA
 		float m_halton_pattern[32];
 
 		float m_cameraFOV = 60.0f;
+		float m_jitterScale = 0.5f;
 	};
 
 } // namespace
