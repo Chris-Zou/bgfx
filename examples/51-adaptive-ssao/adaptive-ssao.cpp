@@ -31,21 +31,20 @@
 
 namespace ASSAO
 {
+	#define RENDER_PASS_GBUFFER 0
+	#define RENDER_PASS_COMBINE 1
 
-#define RENDER_PASS_GBUFFER 0
-#define RENDER_PASS_COMBINE 1
+	#define GBUFFER_RT_NORMAL 0
+	#define GBUFFER_RT_COLOR  1
+	#define GBUFFER_RT_DEPTH  2
 
-#define GBUFFER_RT_NORMAL 0
-#define GBUFFER_RT_COLOR  1
-#define GBUFFER_RT_DEPTH  2
+	#define MODEL_COUNT 60
 
-#define MODEL_COUNT 60
+	#define SAMPLER_POINT_CLAMP  (BGFX_SAMPLER_POINT|BGFX_SAMPLER_UVW_CLAMP)
+	#define SAMPLER_POINT_MIRROR (BGFX_SAMPLER_POINT|BGFX_SAMPLER_UVW_MIRROR)
+	#define SAMPLER_LINEAR_CLAMP (BGFX_SAMPLER_UVW_CLAMP)
 
-#define SAMPLER_POINT_CLAMP  (BGFX_SAMPLER_POINT|BGFX_SAMPLER_UVW_CLAMP)
-#define SAMPLER_POINT_MIRROR (BGFX_SAMPLER_POINT|BGFX_SAMPLER_UVW_MIRROR)
-#define SAMPLER_LINEAR_CLAMP (BGFX_SAMPLER_UVW_CLAMP)
-
-#define SSAO_DEPTH_MIP_LEVELS                       4
+	#define SSAO_DEPTH_MIP_LEVELS                       4
 
 	static const char* s_meshPaths[] =
 	{
@@ -153,7 +152,6 @@ namespace ASSAO
 		float   m_horizonAngleThreshold;             // [0.0, 0.2] Limits self-shadowing (makes the sampling area less of a hemisphere, more of a spherical cone, to avoid self-shadowing and various artifacts due to low tessellation and depth buffer imprecision, etc.)
 		float   m_fadeOutFrom;                       // [0.0,  ~ ] Distance to start start fading out the effect.
 		float   m_fadeOutTo;                         // [0.0,  ~ ] Distance at which the effect is faded out.
-		int32_t m_qualityLevel;                      // [ -1,  3 ] Effect quality; -1 - lowest (low, half res checkerboard), 0 - low, 1 - medium, 2 - high, 3 - very high / adaptive; each quality level is roughly 2x more costly than the previous, except the q3 which is variable but, in general, above q2.
 		float   m_adaptiveQualityLimit;              // [0.0, 1.0] (only for Quality Level 3)
 		int32_t m_blurPassCount;                     // [  0,   6] Number of edge-sensitive smart blur passes to apply. Quality 0 is an exception with only one 'dumb' blur pass used.
 		float   m_sharpness;                         // [0.0, 1.0] (How much to bleed over edges; 1: not at all, 0.5: half-half; 0.0: completely ignore edges)
@@ -172,7 +170,6 @@ namespace ASSAO
 			m_fadeOutFrom = 50.0f;
 			m_fadeOutTo = 200.0f;
 			m_adaptiveQualityLimit = 0.45f;
-			m_qualityLevel = 3;
 			m_blurPassCount = 2;
 			m_sharpness = 0.98f;
 			m_temporalSupersamplingAngleOffset = 0.0f;
@@ -286,20 +283,15 @@ namespace ASSAO
 
 			m_prepareDepthsProgram = compileSigleComputeProgram(prefix, "cs_assao_prepare_depths");
 			m_prepareDepthsAndNormalsProgram = compileSigleComputeProgram(prefix, "cs_assao_prepare_depths_and_normals");
-			m_prepareDepthsHalfProgram = compileSigleComputeProgram(prefix, "cs_assao_prepare_depths_half");
-			m_prepareDepthsAndNormalsHalfProgram = compileSigleComputeProgram(prefix, "cs_assao_prepare_depths_and_normals_half");
 			m_prepareDepthMipProgram = compileSigleComputeProgram(prefix, "cs_assao_prepare_depth_mip");
-			m_generateQ0Program = compileSigleComputeProgram(prefix, "cs_assao_generate_q0");
-			m_generateQ1Program = compileSigleComputeProgram(prefix, "cs_assao_generate_q1");
-			m_generateQ2Program = compileSigleComputeProgram(prefix, "cs_assao_generate_q2");
 			m_generateQ3Program = compileSigleComputeProgram(prefix, "cs_assao_generate_q3");
 			m_generateQ3BaseProgram = compileSigleComputeProgram(prefix, "cs_assao_generate_q3base");
 			m_smartBlurProgram = compileSigleComputeProgram(prefix, "cs_assao_smart_blur");
 			m_smartBlurWideProgram = compileSigleComputeProgram(prefix, "cs_assao_smart_blur_wide");
-			m_nonSmartBlurProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_blur");
+			//m_nonSmartBlurProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_blur");
 			m_applyProgram = compileSigleComputeProgram(prefix, "cs_assao_apply");
-			m_nonSmartApplyProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_apply");
-			m_nonSmartHalfApplyProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_half_apply");
+			//m_nonSmartApplyProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_apply");
+			//m_nonSmartHalfApplyProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_half_apply");
 			m_generateImportanceMapProgram = compileSigleComputeProgram(prefix, "cs_assao_generate_importance_map");
 			m_postprocessImportanceMapAProgram = compileSigleComputeProgram(prefix, "cs_assao_postprocess_importance_map_a");
 			m_postprocessImportanceMapBProgram = compileSigleComputeProgram(prefix, "cs_assao_postprocess_importance_map_b");
@@ -490,8 +482,8 @@ namespace ASSAO
 			m_uniforms.m_passIndex = (float)_pass;
 			vec2Set(m_uniforms.m_quarterResPixelSize, 1.0f / (float)m_quarterSize[0], 1.0f / (float)m_quarterSize[1]);
 
-			float additionalAngleOffset = m_settings.m_temporalSupersamplingAngleOffset;  // if using temporal supersampling approach (like "Progressive Rendering Using Multi-frame Sampling" from GPU Pro 7, etc.)
-			float additionalRadiusScale = m_settings.m_temporalSupersamplingRadiusOffset; // if using temporal supersampling approach (like "Progressive Rendering Using Multi-frame Sampling" from GPU Pro 7, etc.)
+			float additionalAngleOffset = m_settings.m_temporalSupersamplingAngleOffset;
+			float additionalRadiusScale = m_settings.m_temporalSupersamplingRadiusOffset;
 			const int32_t subPassCount = 5;
 
 			for (int32_t subPass = 0; subPass < subPassCount; subPass++)
@@ -632,20 +624,12 @@ namespace ASSAO
 
 			bgfx::destroy(m_prepareDepthsProgram);
 			bgfx::destroy(m_prepareDepthsAndNormalsProgram);
-			bgfx::destroy(m_prepareDepthsHalfProgram);
-			bgfx::destroy(m_prepareDepthsAndNormalsHalfProgram);
 			bgfx::destroy(m_prepareDepthMipProgram);
-			bgfx::destroy(m_generateQ0Program);
-			bgfx::destroy(m_generateQ1Program);
-			bgfx::destroy(m_generateQ2Program);
 			bgfx::destroy(m_generateQ3Program);
 			bgfx::destroy(m_generateQ3BaseProgram);
 			bgfx::destroy(m_smartBlurProgram);
 			bgfx::destroy(m_smartBlurWideProgram);
-			bgfx::destroy(m_nonSmartBlurProgram);
 			bgfx::destroy(m_applyProgram);
-			bgfx::destroy(m_nonSmartApplyProgram);
-			bgfx::destroy(m_nonSmartHalfApplyProgram);
 			bgfx::destroy(m_generateImportanceMapProgram);
 			bgfx::destroy(m_postprocessImportanceMapAProgram);
 			bgfx::destroy(m_postprocessImportanceMapBProgram);
@@ -715,7 +699,7 @@ namespace ASSAO
 
 				updateUniforms(0);
 
-				bgfx::ViewId view = 2;
+				bgfx::ViewId view = 1;
 				bgfx::setViewName(view, "ASSAO");
 
 				{
@@ -727,45 +711,38 @@ namespace ASSAO
 						bgfx::setImage(5, m_normals, 0, bgfx::Access::Write, bgfx::TextureFormat::RGBA8);
 					}
 
+					for (int32_t j = 0; j < 4; ++j)
 					{
-						for (int32_t j = 0; j < 4; ++j)
-						{
-							bgfx::setImage((uint8_t)(j + 1), m_halfDepths[j], 0, bgfx::Access::Write, bgfx::TextureFormat::R16F);
-						}
-
-						bgfx::dispatch(view, m_settings.m_generateNormals ? m_prepareDepthsAndNormalsProgram : m_prepareDepthsProgram, (m_halfSize[0] + 7) / 8, (m_halfSize[1] + 7) / 8);
+						bgfx::setImage((uint8_t)(j + 1), m_halfDepths[j], 0, bgfx::Access::Write, bgfx::TextureFormat::R16F);
 					}
+
+					bgfx::dispatch(view, m_settings.m_generateNormals ? m_prepareDepthsAndNormalsProgram : m_prepareDepthsProgram, (m_halfSize[0] + 7) / 8, (m_halfSize[1] + 7) / 8);
 				}
 
-				if (m_settings.m_qualityLevel > 1)
+				uint16_t mipWidth = (uint16_t)m_halfSize[0];
+				uint16_t mipHeight = (uint16_t)m_halfSize[1];
+
+				for (uint8_t i = 1; i < SSAO_DEPTH_MIP_LEVELS; ++i)
 				{
-					uint16_t mipWidth = (uint16_t)m_halfSize[0];
-					uint16_t mipHeight = (uint16_t)m_halfSize[1];
+					mipWidth = (uint16_t)bx::max(1, mipWidth >> 1);
+					mipHeight = (uint16_t)bx::max(1, mipHeight >> 1);
 
-					for (uint8_t i = 1; i < SSAO_DEPTH_MIP_LEVELS; ++i)
+					for (uint8_t j = 0; j < 4; ++j)
 					{
-						mipWidth = (uint16_t)bx::max(1, mipWidth >> 1);
-						mipHeight = (uint16_t)bx::max(1, mipHeight >> 1);
-
-						for (uint8_t j = 0; j < 4; ++j)
-						{
-							bgfx::setImage(j, m_halfDepths[j], i - 1, bgfx::Access::Read, bgfx::TextureFormat::R16F);
-							bgfx::setImage(j + 4, m_halfDepths[j], i, bgfx::Access::Write, bgfx::TextureFormat::R16F);
-						}
-
-						m_uniforms.submit();
-						float rect[4] = { 0.0f, 0.0f, (float)mipWidth, (float)mipHeight };
-						bgfx::setUniform(u_rect, rect);
-
-						bgfx::dispatch(view, m_prepareDepthMipProgram, (mipWidth + 7) / 8, (mipHeight + 7) / 8);
+						bgfx::setImage(j, m_halfDepths[j], i - 1, bgfx::Access::Read, bgfx::TextureFormat::R16F);
+						bgfx::setImage(j + 4, m_halfDepths[j], i, bgfx::Access::Write, bgfx::TextureFormat::R16F);
 					}
+
+					m_uniforms.submit();
+					float rect[4] = { 0.0f, 0.0f, (float)mipWidth, (float)mipHeight };
+					bgfx::setUniform(u_rect, rect);
+
+					bgfx::dispatch(view, m_prepareDepthMipProgram, (mipWidth + 7) / 8, (mipHeight + 7) / 8);
 				}
 
 				for (int32_t ssaoPass = 0; ssaoPass < 2; ++ssaoPass)
 				{
 					bool adaptiveBasePass = (ssaoPass == 0);
-
-					BX_UNUSED(adaptiveBasePass);
 
 					int32_t passCount = 4;
 
@@ -778,16 +755,13 @@ namespace ASSAO
 						int32_t blurPasses = m_settings.m_blurPassCount;
 						blurPasses = bx::min(blurPasses, cMaxBlurPassCount);
 
-						if (m_settings.m_qualityLevel == 3)
+						if (adaptiveBasePass)
 						{
-							if (adaptiveBasePass)
-							{
-								blurPasses = 0;
-							}
-							else
-							{
-								blurPasses = bx::max(1, blurPasses);
-							}
+							blurPasses = 0;
+						}
+						else
+						{
+							blurPasses = bx::max(1, blurPasses);
 						}
 
 						updateUniforms(pass);
@@ -800,7 +774,6 @@ namespace ASSAO
 
 							bgfx::setUniform(u_rect, halfResRect);
 
-
 							bgfx::setTexture(0, s_viewspaceDepthSource, m_halfDepths[pass], SAMPLER_POINT_CLAMP);
 							bgfx::setTexture(1, s_viewspaceDepthSourceMirror, m_halfDepths[pass], SAMPLER_POINT_MIRROR);
 							if (m_settings.m_generateNormals)
@@ -812,15 +785,15 @@ namespace ASSAO
 								bgfx::setImage(2, bgfx::getTexture(m_gbuffer, GBUFFER_RT_NORMAL), 0, bgfx::Access::Read, bgfx::TextureFormat::RGBA8);
 							}
 
-							if (!adaptiveBasePass && (m_settings.m_qualityLevel == 3))
+							if (!adaptiveBasePass)
 							{
 								bgfx::setBuffer(3, m_loadCounter, bgfx::Access::Read);
 								bgfx::setTexture(4, s_importanceMap, m_importanceMap, SAMPLER_LINEAR_CLAMP);
 								bgfx::setImage(5, m_finalResults, 0, bgfx::Access::Read, bgfx::TextureFormat::RG8);
 							}
 
-							bgfx::ProgramHandle programs[5] = { m_generateQ0Program, m_generateQ1Program, m_generateQ2Program, m_generateQ3Program, m_generateQ3BaseProgram };
-							int32_t programIndex = bx::max(0, (!adaptiveBasePass) ? (m_settings.m_qualityLevel) : (4));
+							bgfx::ProgramHandle programs[2] = { m_generateQ3Program, m_generateQ3BaseProgram };
+							int32_t programIndex = bx::max(0, (!adaptiveBasePass) ? (0) : (1));
 
 							m_uniforms.m_layer = blurPasses == 0 ? (float)pass : 0.0f;
 							m_uniforms.submit();
@@ -842,23 +815,16 @@ namespace ASSAO
 								bgfx::setUniform(u_rect, halfResRect);
 
 								bgfx::setImage(0, i == (blurPasses - 1) ? m_finalResults : pPongRT, 0, bgfx::Access::Write, bgfx::TextureFormat::RG8);
-								bgfx::setTexture(1, s_blurInput, pPingRT, m_settings.m_qualityLevel > 0 ? SAMPLER_POINT_MIRROR : SAMPLER_LINEAR_CLAMP);
+								bgfx::setTexture(1, s_blurInput, pPingRT, SAMPLER_POINT_MIRROR);
 
-								if (m_settings.m_qualityLevel > 0)
+								if (wideBlursRemaining > 0)
 								{
-									if (wideBlursRemaining > 0)
-									{
-										bgfx::dispatch(view, m_smartBlurWideProgram, halfResNumX, halfResNumY);
-										wideBlursRemaining--;
-									}
-									else
-									{
-										bgfx::dispatch(view, m_smartBlurProgram, halfResNumX, halfResNumY);
-									}
+									bgfx::dispatch(view, m_smartBlurWideProgram, halfResNumX, halfResNumY);
+									wideBlursRemaining--;
 								}
 								else
 								{
-									bgfx::dispatch(view, m_nonSmartBlurProgram, halfResNumX, halfResNumY);
+									bgfx::dispatch(view, m_smartBlurProgram, halfResNumX, halfResNumY);
 								}
 
 								bgfx::TextureHandle tmp = pPingRT;
@@ -868,28 +834,25 @@ namespace ASSAO
 						}
 					}
 
-					if (ssaoPass == 0 && m_settings.m_qualityLevel == 3)
-					{
-						m_uniforms.submit();
-						bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
-						bgfx::setTexture(1, s_finalSSAO, m_finalResults, SAMPLER_POINT_CLAMP);
-						bgfx::dispatch(view, m_generateImportanceMapProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
+					m_uniforms.submit();
+					bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
+					bgfx::setTexture(1, s_finalSSAO, m_finalResults, SAMPLER_POINT_CLAMP);
+					bgfx::dispatch(view, m_generateImportanceMapProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
 
-						m_uniforms.submit();
-						bgfx::setImage(0, m_importanceMapPong, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
-						bgfx::setTexture(1, s_importanceMap, m_importanceMap);
-						bgfx::dispatch(view, m_postprocessImportanceMapAProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
+					m_uniforms.submit();
+					bgfx::setImage(0, m_importanceMapPong, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
+					bgfx::setTexture(1, s_importanceMap, m_importanceMap);
+					bgfx::dispatch(view, m_postprocessImportanceMapAProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
 
-						bgfx::setBuffer(0, m_loadCounter, bgfx::Access::ReadWrite);
-						bgfx::dispatch(view, m_loadCounterClearProgram, 1, 1);
+					bgfx::setBuffer(0, m_loadCounter, bgfx::Access::ReadWrite);
+					bgfx::dispatch(view, m_loadCounterClearProgram, 1, 1);
 
-						m_uniforms.submit();
-						bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
-						bgfx::setTexture(1, s_importanceMap, m_importanceMapPong);
-						bgfx::setBuffer(2, m_loadCounter, bgfx::Access::ReadWrite);
-						bgfx::dispatch(view, m_postprocessImportanceMapBProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
-						++view;
-					}
+					m_uniforms.submit();
+					bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
+					bgfx::setTexture(1, s_importanceMap, m_importanceMapPong);
+					bgfx::setBuffer(2, m_loadCounter, bgfx::Access::ReadWrite);
+					bgfx::dispatch(view, m_postprocessImportanceMapBProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
+					++view;
 				}
 
 				{
@@ -901,13 +864,7 @@ namespace ASSAO
 					float rect[4] = { (float)m_fullResOutScissorRect[0], (float)m_fullResOutScissorRect[1], (float)m_fullResOutScissorRect[2], (float)m_fullResOutScissorRect[3] };
 					bgfx::setUniform(u_rect, rect);
 
-					bgfx::ProgramHandle program;
-					if (m_settings.m_qualityLevel < 0)
-						program = m_nonSmartHalfApplyProgram;
-					else if (m_settings.m_qualityLevel == 0)
-						program = m_nonSmartApplyProgram;
-					else
-						program = m_applyProgram;
+					bgfx::ProgramHandle program = m_applyProgram;
 					bgfx::dispatch(view, program, (m_fullResOutScissorRect[2] - m_fullResOutScissorRect[0] + 7) / 8,
 						(m_fullResOutScissorRect[3] - m_fullResOutScissorRect[1] + 7) / 8);
 
@@ -937,72 +894,66 @@ namespace ASSAO
 					++view;
 				}
 
-				imguiBeginFrame(m_mouseState.m_mx
-					, m_mouseState.m_my
-					, (m_mouseState.m_buttons[entry::MouseButton::Left] ? IMGUI_MBUT_LEFT : 0)
-					| (m_mouseState.m_buttons[entry::MouseButton::Right] ? IMGUI_MBUT_RIGHT : 0)
-					| (m_mouseState.m_buttons[entry::MouseButton::Middle] ? IMGUI_MBUT_MIDDLE : 0)
-					, m_mouseState.m_mz
-					, uint16_t(m_width)
-					, uint16_t(m_height)
-				);
 
-				showExampleDialog(this);
-
-				ImGui::SetNextWindowPos(
-					ImVec2(m_width - m_width / 4.0f - 10.0f, 10.0f)
-					, ImGuiCond_FirstUseEver
-				);
-				ImGui::SetNextWindowSize(
-					ImVec2(m_width / 4.0f, m_height / 1.3f)
-					, ImGuiCond_FirstUseEver
-				);
-				ImGui::Begin("Settings"
-					, NULL
-					, 0
-				);
-
-				ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.5f);
-				ImGui::Checkbox("Enable SSAO", &m_enableSSAO);
-				ImGui::Checkbox("Enable Texturing & Lighting", &m_enableTexturing);
-				ImGui::Separator();
-
-				int32_t quality = m_settings.m_qualityLevel + 1;
-
-				if (ImGui::Combo("Quality Level", &quality, "Lowest (Half Resolution)\0Low\0Medium\0High\0Adaptive\0\0"))
+			// ui
 				{
-					m_settings.m_qualityLevel = quality - 1;
-				}
+					imguiBeginFrame(m_mouseState.m_mx
+						, m_mouseState.m_my
+						, (m_mouseState.m_buttons[entry::MouseButton::Left] ? IMGUI_MBUT_LEFT : 0)
+						| (m_mouseState.m_buttons[entry::MouseButton::Right] ? IMGUI_MBUT_RIGHT : 0)
+						| (m_mouseState.m_buttons[entry::MouseButton::Middle] ? IMGUI_MBUT_MIDDLE : 0)
+						, m_mouseState.m_mz
+						, uint16_t(m_width)
+						, uint16_t(m_height)
+					);
 
-				ImGui::Checkbox("Generate Normals", &m_settings.m_generateNormals);
+					showExampleDialog(this);
 
-				if (ImGui::Checkbox("Framebuffer Gutter", &m_framebufferGutter))
-				{
-					m_recreateFrameBuffers = true;
-				}
+					ImGui::SetNextWindowPos(
+						ImVec2(m_width - m_width / 4.0f - 10.0f, 10.0f)
+						, ImGuiCond_FirstUseEver
+					);
+					ImGui::SetNextWindowSize(
+						ImVec2(m_width / 4.0f, m_height / 1.3f)
+						, ImGuiCond_FirstUseEver
+					);
+					ImGui::Begin("Settings"
+						, NULL
+						, 0
+					);
 
-				ImGui::SliderFloat("Effect Radius", &m_settings.m_radius, 0.0f, 4.0f);
-				ImGui::SliderFloat("Effect Strength", &m_settings.m_shadowMultiplier, 0.0f, 5.0f);
-				ImGui::SliderFloat("Effect Power", &m_settings.m_shadowPower, 0.5f, 4.0f);
-				ImGui::SliderFloat("Effect Max Limit", &m_settings.m_shadowClamp, 0.0f, 1.0f);
-				ImGui::SliderFloat("Horizon Angle Threshold", &m_settings.m_horizonAngleThreshold, 0.0f, 0.2f);
-				ImGui::SliderFloat("Fade Out From", &m_settings.m_fadeOutFrom, 0.0f, 100.0f);
-				ImGui::SliderFloat("Fade Out To", &m_settings.m_fadeOutTo, 0.0f, 300.0f);
+					ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.5f);
+					ImGui::Checkbox("Enable SSAO", &m_enableSSAO);
+					ImGui::Checkbox("Enable Texturing & Lighting", &m_enableTexturing);
+					ImGui::Separator();
 
-				if (m_settings.m_qualityLevel == 3)
-				{
+					ImGui::Checkbox("Generate Normals", &m_settings.m_generateNormals);
+
+					if (ImGui::Checkbox("Framebuffer Gutter", &m_framebufferGutter))
+					{
+						m_recreateFrameBuffers = true;
+					}
+
+					ImGui::SliderFloat("Effect Radius", &m_settings.m_radius, 0.0f, 4.0f);
+					ImGui::SliderFloat("Effect Strength", &m_settings.m_shadowMultiplier, 0.0f, 5.0f);
+					ImGui::SliderFloat("Effect Power", &m_settings.m_shadowPower, 0.5f, 4.0f);
+					ImGui::SliderFloat("Effect Max Limit", &m_settings.m_shadowClamp, 0.0f, 1.0f);
+					ImGui::SliderFloat("Horizon Angle Threshold", &m_settings.m_horizonAngleThreshold, 0.0f, 0.2f);
+					ImGui::SliderFloat("Fade Out From", &m_settings.m_fadeOutFrom, 0.0f, 100.0f);
+					ImGui::SliderFloat("Fade Out To", &m_settings.m_fadeOutTo, 0.0f, 300.0f);
+
 					ImGui::SliderFloat("Adaptive Quality Limit", &m_settings.m_adaptiveQualityLimit, 0.0f, 1.0f);
+
+					ImGui::SliderInt("Blur Pass Count", &m_settings.m_blurPassCount, 0, 6);
+					ImGui::SliderFloat("Sharpness", &m_settings.m_sharpness, 0.0f, 1.0f);
+					ImGui::SliderFloat("Temporal Supersampling Angle Offset", &m_settings.m_temporalSupersamplingAngleOffset, 0.0f, bx::kPi);
+					ImGui::SliderFloat("Temporal Supersampling Radius Offset", &m_settings.m_temporalSupersamplingRadiusOffset, 0.0f, 2.0f);
+					ImGui::SliderFloat("Detail Shadow Strength", &m_settings.m_detailShadowStrength, 0.0f, 4.0f);
+
+					ImGui::End();
+
+					imguiEndFrame();
 				}
-
-				ImGui::SliderInt("Blur Pass Count", &m_settings.m_blurPassCount, 0, 6);
-				ImGui::SliderFloat("Sharpness", &m_settings.m_sharpness, 0.0f, 1.0f);
-				ImGui::SliderFloat("Temporal Supersampling Angle Offset", &m_settings.m_temporalSupersamplingAngleOffset, 0.0f, bx::kPi);
-				ImGui::SliderFloat("Temporal Supersampling Radius Offset", &m_settings.m_temporalSupersamplingRadiusOffset, 0.0f, 2.0f);
-				ImGui::SliderFloat("Detail Shadow Strength", &m_settings.m_detailShadowStrength, 0.0f, 4.0f);
-
-				ImGui::End();
-
-				imguiEndFrame();
 
 				// Advance to next frame. Rendering thread will be kicked to
 				// process submitted rendering primitives.
@@ -1010,7 +961,7 @@ namespace ASSAO
 
 				return true;
 			}
-			return true;
+			return false;
 		}
 
 	public:
@@ -1032,20 +983,20 @@ namespace ASSAO
 
 		bgfx::ProgramHandle m_prepareDepthsProgram;
 		bgfx::ProgramHandle m_prepareDepthsAndNormalsProgram;
-		bgfx::ProgramHandle m_prepareDepthsHalfProgram;
-		bgfx::ProgramHandle m_prepareDepthsAndNormalsHalfProgram;
+		//bgfx::ProgramHandle m_prepareDepthsHalfProgram;
+		//bgfx::ProgramHandle m_prepareDepthsAndNormalsHalfProgram;
 		bgfx::ProgramHandle m_prepareDepthMipProgram;
-		bgfx::ProgramHandle m_generateQ0Program;
-		bgfx::ProgramHandle m_generateQ1Program;
-		bgfx::ProgramHandle m_generateQ2Program;
+		//bgfx::ProgramHandle m_generateQ0Program;
+		//bgfx::ProgramHandle m_generateQ1Program;
+		//bgfx::ProgramHandle m_generateQ2Program;
 		bgfx::ProgramHandle m_generateQ3Program;
 		bgfx::ProgramHandle m_generateQ3BaseProgram;
 		bgfx::ProgramHandle m_smartBlurProgram;
 		bgfx::ProgramHandle m_smartBlurWideProgram;
-		bgfx::ProgramHandle m_nonSmartBlurProgram;
+		//bgfx::ProgramHandle m_nonSmartBlurProgram;
 		bgfx::ProgramHandle m_applyProgram;
-		bgfx::ProgramHandle m_nonSmartApplyProgram;
-		bgfx::ProgramHandle m_nonSmartHalfApplyProgram;
+		//bgfx::ProgramHandle m_nonSmartApplyProgram;
+		//bgfx::ProgramHandle m_nonSmartHalfApplyProgram;
 		bgfx::ProgramHandle m_generateImportanceMapProgram;
 		bgfx::ProgramHandle m_postprocessImportanceMapAProgram;
 		bgfx::ProgramHandle m_postprocessImportanceMapBProgram;
