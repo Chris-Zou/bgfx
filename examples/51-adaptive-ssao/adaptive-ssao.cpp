@@ -288,10 +288,7 @@ namespace ASSAO
 			m_generateQ3BaseProgram = compileSigleComputeProgram(prefix, "cs_assao_generate_q3base");
 			m_smartBlurProgram = compileSigleComputeProgram(prefix, "cs_assao_smart_blur");
 			m_smartBlurWideProgram = compileSigleComputeProgram(prefix, "cs_assao_smart_blur_wide");
-			//m_nonSmartBlurProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_blur");
 			m_applyProgram = compileSigleComputeProgram(prefix, "cs_assao_apply");
-			//m_nonSmartApplyProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_apply");
-			//m_nonSmartHalfApplyProgram = compileSigleComputeProgram(prefix, "cs_assao_non_smart_half_apply");
 			m_generateImportanceMapProgram = compileSigleComputeProgram(prefix, "cs_assao_generate_importance_map");
 			m_postprocessImportanceMapAProgram = compileSigleComputeProgram(prefix, "cs_assao_postprocess_importance_map_a");
 			m_postprocessImportanceMapBProgram = compileSigleComputeProgram(prefix, "cs_assao_postprocess_importance_map_b");
@@ -983,20 +980,12 @@ namespace ASSAO
 
 		bgfx::ProgramHandle m_prepareDepthsProgram;
 		bgfx::ProgramHandle m_prepareDepthsAndNormalsProgram;
-		//bgfx::ProgramHandle m_prepareDepthsHalfProgram;
-		//bgfx::ProgramHandle m_prepareDepthsAndNormalsHalfProgram;
 		bgfx::ProgramHandle m_prepareDepthMipProgram;
-		//bgfx::ProgramHandle m_generateQ0Program;
-		//bgfx::ProgramHandle m_generateQ1Program;
-		//bgfx::ProgramHandle m_generateQ2Program;
 		bgfx::ProgramHandle m_generateQ3Program;
 		bgfx::ProgramHandle m_generateQ3BaseProgram;
 		bgfx::ProgramHandle m_smartBlurProgram;
 		bgfx::ProgramHandle m_smartBlurWideProgram;
-		//bgfx::ProgramHandle m_nonSmartBlurProgram;
 		bgfx::ProgramHandle m_applyProgram;
-		//bgfx::ProgramHandle m_nonSmartApplyProgram;
-		//bgfx::ProgramHandle m_nonSmartHalfApplyProgram;
 		bgfx::ProgramHandle m_generateImportanceMapProgram;
 		bgfx::ProgramHandle m_postprocessImportanceMapAProgram;
 		bgfx::ProgramHandle m_postprocessImportanceMapBProgram;
