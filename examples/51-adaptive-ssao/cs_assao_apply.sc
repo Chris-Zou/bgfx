@@ -54,7 +54,6 @@ void main()
 		float fmye  = (edgesLRTB.w - edgesLRTB.z);
 
 		// calculate final sampling offsets and sample using bilinear filter
-
 		vec2  uvH = (dtID.xy + vec2( fmx + fmxe - 0.5, 0.5 - fmy ) ) * 0.5 * u_halfViewportPixelSize;
 
 		float   aoH = texture2DArrayLod(s_finalSSAO, vec3( uvH, ih ), 0 ).x;

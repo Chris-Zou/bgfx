@@ -72,7 +72,7 @@ void main()
 	if (all(lessThan(dtID.xy, dim) ) )
 	{
 		ivec2 baseCoords = ivec2(dtID.xy) * 2;
-		vec2 upperLeftUV = (vec2(dtID.xy) + vec2(0.25,0.25)) * u_viewport2xPixelSize;
+		vec2 upperLeftUV = (vec2(dtID.xy) - vec2(0.25,0.25)) * u_viewport2xPixelSize;
 
 		ivec2 baseCoord = ivec2(dtID.xy) * 2;
 

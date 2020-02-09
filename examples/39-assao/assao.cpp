@@ -253,7 +253,7 @@ namespace
 			, m_enableSSAO(true)
 			, m_enableTexturing(true)
 			, m_texelHalf(0.0f)
-			, m_framebufferGutter(true)
+			, m_framebufferGutter(false)
 		{
 		}
 
