@@ -270,7 +270,7 @@ namespace ASSAO
 			, m_enableSSAO(true)
 			, m_enableTexturing(true)
 			, m_texelHalf(0.0f)
-			, m_framebufferGutter(true)
+			, m_framebufferGutter(false)
 		{
 		}
 
@@ -719,6 +719,7 @@ namespace ASSAO
 				uint16_t mipWidth = (uint16_t)m_halfSize[0];
 				uint16_t mipHeight = (uint16_t)m_halfSize[1];
 
+				//generate mips
 				for (uint8_t i = 1; i < SSAO_DEPTH_MIP_LEVELS; ++i)
 				{
 					mipWidth = (uint16_t)bx::max(1, mipWidth >> 1);
@@ -737,9 +738,15 @@ namespace ASSAO
 					bgfx::dispatch(view, m_prepareDepthMipProgram, (mipWidth + 7) / 8, (mipHeight + 7) / 8);
 				}
 
+				//adaptive ssao
 				for (int32_t ssaoPass = 0; ssaoPass < 2; ++ssaoPass)
 				{
 					bool adaptiveBasePass = (ssaoPass == 0);
+
+					if (adaptiveBasePass)
+						bgfx::setViewName(view, "adaptiveBasePass");
+					else
+						bgfx::setViewName(view, "assaoPass");
 
 					int32_t passCount = 4;
 
@@ -831,25 +838,28 @@ namespace ASSAO
 						}
 					}
 
-					m_uniforms.submit();
-					bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
-					bgfx::setTexture(1, s_finalSSAO, m_finalResults, SAMPLER_POINT_CLAMP);
-					bgfx::dispatch(view, m_generateImportanceMapProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
+					if (ssaoPass == 0)
+					{
+						m_uniforms.submit();
+						bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
+						bgfx::setTexture(1, s_finalSSAO, m_finalResults, SAMPLER_POINT_CLAMP);
+						bgfx::dispatch(view, m_generateImportanceMapProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
 
-					m_uniforms.submit();
-					bgfx::setImage(0, m_importanceMapPong, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
-					bgfx::setTexture(1, s_importanceMap, m_importanceMap);
-					bgfx::dispatch(view, m_postprocessImportanceMapAProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
+						m_uniforms.submit();
+						bgfx::setImage(0, m_importanceMapPong, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
+						bgfx::setTexture(1, s_importanceMap, m_importanceMap);
+						bgfx::dispatch(view, m_postprocessImportanceMapAProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
 
-					bgfx::setBuffer(0, m_loadCounter, bgfx::Access::ReadWrite);
-					bgfx::dispatch(view, m_loadCounterClearProgram, 1, 1);
+						bgfx::setBuffer(0, m_loadCounter, bgfx::Access::ReadWrite);
+						bgfx::dispatch(view, m_loadCounterClearProgram, 1, 1);
 
-					m_uniforms.submit();
-					bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
-					bgfx::setTexture(1, s_importanceMap, m_importanceMapPong);
-					bgfx::setBuffer(2, m_loadCounter, bgfx::Access::ReadWrite);
-					bgfx::dispatch(view, m_postprocessImportanceMapBProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
-					++view;
+						m_uniforms.submit();
+						bgfx::setImage(0, m_importanceMap, 0, bgfx::Access::Write, bgfx::TextureFormat::R8);
+						bgfx::setTexture(1, s_importanceMap, m_importanceMapPong);
+						bgfx::setBuffer(2, m_loadCounter, bgfx::Access::ReadWrite);
+						bgfx::dispatch(view, m_postprocessImportanceMapBProgram, (m_quarterSize[0] + 7) / 8, (m_quarterSize[1] + 7) / 8);
+						++view;
+					}
 				}
 
 				{
