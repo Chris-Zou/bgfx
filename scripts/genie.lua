@@ -516,7 +516,8 @@ or _OPTIONS["with-combined-examples"] then
 		, "48-DolphinEngine"
 		, "49-taa"
 		, "50-parallax"
-		, "51-photon"
+		, "51-adaptive-ssao"
+		, "52-photon"
 		)
 
 	-- C99 source doesn't compile under WinRT settings
