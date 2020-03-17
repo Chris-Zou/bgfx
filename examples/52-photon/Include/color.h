@@ -43,7 +43,7 @@ public:
 
 	Color operator*(const Color& _c) const
 	{
-		return Color(m_r * _c.m_r, m_g * _c.m_g, m_b * _c.m_b)；
+		return Color(m_r * _c.m_r, m_g * _c.m_g, m_b * _c.m_b);
 	}
 
 	Color operator*(const float s) const
@@ -73,7 +73,7 @@ public:
 
 	Color Clamp() const
 	{
-		return Color(max(0.0f, min(m_r, 1.0f)), max(0.0f, min(m_g, 1.0f)), max(0.0f, min(m_b, 1.0f)));
+		return Color(std::max(0.0f, std::min(m_r, 1.0f)), std::max(0.0f, std::min(m_g, 1.0f)), std::max(0.0f, std::min(m_b, 1.0f)));
 	}
 
 	Color GammaCorrect() const
