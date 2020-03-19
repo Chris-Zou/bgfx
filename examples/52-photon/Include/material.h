@@ -23,8 +23,8 @@ private:
 	float m_shininess;
 };
 
-static const shared_ptr<Material> NONE = make_shared<Material>(Material(BLACK, BLACK, BLACK, BLACK, 0.0f));
-static const shared_ptr<Material> MIRROR = make_shared<Material>(Material(BLACK, BLACK, WHITE, BLACK, 0.0f));
-static const shared_ptr<Material> LAMBERTIAN = make_shared<Material>(Material(WHITE, BLACK, BLACK, BLACK, 0.0f));
-static const shared_ptr<Material> SPECKLED_LAMBERTIAN = make_shared<Material>(Material(WHITE / 2, GRAY / 4, BLACK, BLACK, 20.0f));
-static const shared_ptr<Material> GLASS = make_shared<Material>(Material(BLACK, BLACK, BLACK, WHITE, 0.0f));
+static Material* NONE = &Material(Material(BLACK, BLACK, BLACK, BLACK, 0.0f));
+static Material* MIRROR = &Material(Material(BLACK, BLACK, WHITE, BLACK, 0.0f));
+static Material* LAMBERTIAN = &Material(Material(WHITE, BLACK, BLACK, BLACK, 0.0f));
+static Material* SPECKLED_LAMBERTIAN = &Material(Material(WHITE / 2, GRAY / 4, BLACK, BLACK, 20.0f));
+static Material* GLASS = &Material(Material(BLACK, BLACK, BLACK, WHITE, 0.0f));

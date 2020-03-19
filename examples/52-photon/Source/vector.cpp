@@ -87,6 +87,31 @@ bool Vector::operator==(const Vector& v) const
 	return (m_x == v.m_x && m_y == v.m_y && m_z == v.m_z);
 }
 
+bool Vector::operator!=(const Vector& v) const
+{
+	return !(*this == v);
+}
+
+float Vector::Distance(const Vector& p) const
+{
+	return (*this - p).Length();
+}
+
+float Vector::operator[](const unsigned int index) const
+{
+	switch (index)
+	{
+	case 0:
+		return m_x;
+	case 1:
+		return m_y;
+	case 2:
+		return m_z;
+	default:
+		return 0.0f;
+	}
+}
+
 std::ostream& operator<<(std::ostream& out, const Vector& v)
 {
 	out << "Vector(" << v.m_x << ", " << v.m_y << ", " << v.m_z << ")";

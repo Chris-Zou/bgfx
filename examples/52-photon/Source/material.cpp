@@ -23,7 +23,7 @@ Color Material::PhongBRDF(const Vector& from, const Vector& light, const Vector&
 	return (GetDiffuse(point) / PI) + m_ks * ((m_shininess + 2) / (2 * PI) * pow(cosine, m_shininess));
 }
 
-Color Material::GetDiffuse() const
+Color Material::GetDiffuse(const Vector& point) const
 {
 	return m_kd;
 }

@@ -23,6 +23,7 @@ public:
 
 	float Length() const;
 	Vector Normalize() const;
+	float Distance(const Vector& p) const;
 	Vector operator*(const float s) const;
 	Vector operator/(const float s) const;
 	Vector operator+(const Vector& v) const;
@@ -33,6 +34,7 @@ public:
 	Vector CrossProduct(const Vector& v) const;
 	bool operator==(const Vector& v) const;
 	bool operator!=(const Vector& v) const;
+	float operator[](const unsigned int index) const;
 	
 	friend std::ostream& operator<<(std::ostream& out, const Vector& v);
 
