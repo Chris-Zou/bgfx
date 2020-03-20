@@ -2,6 +2,7 @@
 
 #include <random>
 #include <tuple>
+#include "vector.h"
 
 static constexpr float PI = 3.1415926535897932f;
 
@@ -29,7 +30,7 @@ inline static std::tuple<float, float> UniformCosineSampling()
 	return std::make_tuple(inclination, azimuth);
 }
 
-inline static tuple<float, float> UniformSphereSampling()
+inline static std::tuple<float, float> UniformSphereSampling()
 {
 	float inclination = acos(2 * GetRandomValue() - 1.0f);
 	float azimuth = 2 * PI * GetRandomValue();
@@ -37,10 +38,19 @@ inline static tuple<float, float> UniformSphereSampling()
 	return std::make_tuple(inclination, azimuth);
 }
 
-inline static tuple<float, float> PhongSpecularLobeSampling(const float alpha)
+inline static std::tuple<float, float> PhongSpecularLobeSampling(const float alpha)
 {
 	float inclination = acos(pow(GetRandomValue(), 1.0f / (alpha + 1.0f)));
 	float azimuth = 2 * PI * GetRandomValue();
 
 	return std::make_tuple(inclination, azimuth);
+}
+
+Vector VisibleNormal(const Vector& normal, const Vector& from)
+{
+	float cosine = normal.DotProduct(from);
+	if ((cosine > 0) | ((cosine == 0) & (normal == from)))
+		return normal * -1;
+	else
+		return normal;
 }
