@@ -14,3 +14,11 @@ public:
 private:
 	float m_data[16];
 };
+
+class PoseTransformationMatrix : public Matrix
+{
+public:
+	PoseTransformationMatrix(const Vector& origin, const Vector& xAxis, const Vector& yAxis, const Vector& zAxis);
+	static PoseTransformationMatrix GetPoseTransformation(const Vector& Point, const Vector& zAxis);
+	PoseTransformationMatrix Inverse() const;
+};

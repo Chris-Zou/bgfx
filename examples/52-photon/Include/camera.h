@@ -8,7 +8,7 @@ class Camera
 public:
 	Camera();
 	Camera(const Vector& up, const Vector &right, const Vector& towards, const Vector& focalPoint, const float fov, const float viewplaneDistance, int width, int height);
-private:
+public:
 	void CalculatePixelSize();
 	virtual Vector GetFirstPixel() const = 0;
 
@@ -17,7 +17,7 @@ private:
 	Vector GetTowards() const;
 	Vector GetFocalPoint() const;
 	void SetImageDimensions(int width, int height);
-	int GetWidht() const;
+	int GetWidth() const;
 	int GetHeight() const;
 	float GetPixelSize() const;
 

@@ -52,7 +52,7 @@ Vector Camera::GetFocalPoint() const
 	return m_focalPoint;
 }
 
-int Camera::GetWidht() const
+int Camera::GetWidth() const
 {
 	return m_width;
 }
