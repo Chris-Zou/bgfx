@@ -24,3 +24,8 @@ unsigned int Image::GetHeight() const
 {
 	return m_image.size();
 }
+
+std::vector<Color>& Image::operator[](const unsigned int i)
+{
+	return m_image[i];
+}

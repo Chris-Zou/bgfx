@@ -17,9 +17,11 @@ public:
 
 	Vector();
 	Vector(const float _x, const float _y, const float _z);
+	Vector(const float _x, const float _y, const float _z, const float _w);
 	float GetX() const;
 	float GetY() const;
 	float GetZ() const;
+	float GetW() const;
 
 	float Length() const;
 	Vector Normalize() const;
@@ -42,4 +44,5 @@ private:
 	float m_x;
 	float m_y;
 	float m_z;
+	float m_w;
 };

@@ -36,7 +36,7 @@ public:
 
 	Color operator+(const Color& _c)
 	{
-		return Color(m_r + _c.m_r, m_g + _c.m_g, m_b + _c.m_b)
+		return Color(m_r + _c.m_r, m_g + _c.m_g, m_b + _c.m_b);
 	}
 
 	void operator+=(const Color& _c)

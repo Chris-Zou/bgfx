@@ -7,7 +7,7 @@ Pinhole::Pinhole()
 }
 
 Pinhole::Pinhole(const Vector& up, const Vector &right, const Vector& towards, const Vector& focalPoint, const float fov, const float viewplaneDistance, int width, int height)
-	: Camera(up, rightr, towards, focalPoint, fov, viewplaneDistance, widht, height)
+	: Camera(up, right, towards, focalPoint, fov, viewplaneDistance, width, height)
 {
 
 }

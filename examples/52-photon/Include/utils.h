@@ -46,7 +46,7 @@ inline static std::tuple<float, float> PhongSpecularLobeSampling(const float alp
 	return std::make_tuple(inclination, azimuth);
 }
 
-Vector VisibleNormal(const Vector& normal, const Vector& from)
+inline static Vector VisibleNormal(const Vector& normal, const Vector& from)
 {
 	float cosine = normal.DotProduct(from);
 	if ((cosine > 0) | ((cosine == 0) & (normal == from)))

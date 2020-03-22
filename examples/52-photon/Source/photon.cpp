@@ -8,7 +8,7 @@ Photon::Photon(const Color& flux, const Vector& incidence)
 {}
 
 Photon::Photon(const ColoredRay& lightRay)
-	: Photon(lightRay.GetColor(), lightRay.GetDirection)
+	: Photon(lightRay.GetColor(), lightRay.GetDirection())
 {
 }
 

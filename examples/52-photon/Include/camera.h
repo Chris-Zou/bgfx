@@ -21,7 +21,7 @@ public:
 	int GetHeight() const;
 	float GetPixelSize() const;
 
-private:
+protected:
 	Vector m_up;
 	Vector m_right;
 	Vector m_towards;

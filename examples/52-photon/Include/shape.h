@@ -16,7 +16,7 @@ public:
 	static Vector Reflect(const Vector& in, const Vector& normal);
 	Ray Refract(const Ray& in, const Vector& point, const Vector& visibleNormal) const;
 	bool RussianRoulette(const ColoredRay &in, const Vector &point, ColoredRay &out) const;
-	virtual bool IsInside(const Vector& point) const;
+	//virtual bool IsInside(const Vector& point) const;
 	virtual Vector GetNormal(const Vector& point) const = 0;
 	Vector GetVisibleNormal(const Vector& point, const Ray& from) const;
 	Material* GetMaterial() const;

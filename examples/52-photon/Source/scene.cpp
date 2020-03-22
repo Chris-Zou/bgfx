@@ -28,7 +28,7 @@ Image* Scene::Render() const
 	Vector currentPixel = m_camera->GetFirstPixel();
 	Vector currentRow = currentPixel;
 	Vector advanceX(m_camera->GetRight() * m_camera->GetPixelSize());
-	Vector advanceY(m_camera->GetUp * m_camera->GetPixelSize());
+	Vector advanceY(m_camera->GetUp() * m_camera->GetPixelSize());
 
 	for (int i = 0; i < m_camera->GetHeight(); ++i)
 	{
@@ -144,7 +144,7 @@ Color Scene::GetLightRayColor(const Ray& lightRay, const int specularSteps) cons
 	Shape* nearestShape;
 	for (int i = 0; i < m_shapes.size(); ++i)
 	{
-		m_shapes[i]->Intersect(lightRay, mint, nearestShape, m_shapes[i]);
+		m_shapes[i]->Intersect(lightRay, mint, nearestShape, const_cast<Shape*>(m_shapes[i]));
 	}
 
 	if (mint == FLT_MAX)
@@ -212,7 +212,7 @@ Color Scene::GeometryEstimateRadiance(const Vector& point, const Vector& normal,
 
 	Color ret = BLACK;
 
-	vector<const Node*> nodeList;
+	vector<Node*> nodeList;
 	float radius;
 	m_diffusePhotonMap.Find(point, m_photonsNeighbours, nodeList, radius);
 

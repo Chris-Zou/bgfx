@@ -4,10 +4,19 @@
 Vector::Vector() {}
 
 Vector::Vector(const float _x, const float _y, const float _z)
-	:m_x(_x)
+	: m_x(_x)
 	, m_y(_y)
 	, m_z(_z)
 {}
+
+Vector::Vector(const float _x, const float _y, const float _z, const float _w)
+	: m_x(_x)
+	, m_y(_y)
+	, m_z(_z)
+	, m_w(_w)
+{
+
+}
 
 float Vector::GetX() const
 {
@@ -22,6 +31,11 @@ float Vector::GetY() const
 float Vector::GetZ() const
 {
 	return m_z;
+}
+
+float Vector::GetW() const
+{
+	return m_w;
 }
 
 float Vector::Length() const

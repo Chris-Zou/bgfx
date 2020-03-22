@@ -11,7 +11,8 @@ public:
 	bool operator==(const Matrix& m) const;
 	bool operator!=(const Matrix& m) const;
 	friend std::ostream& operator<<(std::ostream& out, const Matrix& mat);
-private:
+
+protected:
 	float m_data[16];
 };
 

@@ -45,7 +45,7 @@ private:
 	static void MedianSplit(std::vector<Node>& p, int start, int end, int median, EDimension& axis);
 	static void BalanceSegment(std::vector<Node>& pbal, std::vector<Node>& porg, int index, int start, int end, const Vector& bbmin, const Vector& bbmax);
 	int Closest(const Vector& p, int index, int best) const;
-	void Find(const Vector& p, int index, float radius, std::list<const Node*>& nodes) const;
+	void Find(const Vector& p, int index, float radius, std::list<Node*>& nodes) const;
 	void Find(const Vector& p, int index, int nb_elements, float &dist_worst, std::vector<Node*> &nodes, std::vector<std::pair<int, float> >&dist) const;
 
 	class HeapComparison

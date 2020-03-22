@@ -86,11 +86,11 @@ const Node& KDTree::Find(const Vector& p) const
 	return m_balanced[Closest(p, 1, 1)];
 }
 
-void KDTree::Find(const Vector& p, int index, float radius, list<const Node*>& nodes) const
+void KDTree::Find(const Vector& p, int index, float radius, list<Node*>& nodes) const
 {
 	if (m_balanced[index].m_point.Distance(p) < radius)
 	{
-		nodes.push_back(&m_balanced[index]);
+		nodes.push_back(const_cast<Node*>(&m_balanced[index]));
 	}
 
 	if (index < ((m_balanced.size() - 1) / 2))
@@ -143,7 +143,7 @@ void KDTree::Find(const Vector& p, int index, int nb_elements, float &dist_worst
 
 int KDTree::Closest(const Vector& p, int index, int best) const
 {
-
+	return 0;
 }
 
 void KDTree::MedianSplit(vector<Node>& p, int start, int end, int median, EDimension& axis)

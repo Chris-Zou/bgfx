@@ -15,11 +15,11 @@ class Image
 {
 public:
 	Image(const unsigned int width, const unsigned int height);
-	Image(const string& filename);
-	void Save(const string filename, SaveMode mode = DIM_TO_WHITE) const;
+	Image(const std::string& filename);
+	void Save(const std::string& filename, SaveMode mode = DIM_TO_WHITE) const;
 	unsigned int GetWidth() const;
 	unsigned int GetHeight() const;
-	vector<Color>& operator[](const unsigned int i);
+	std::vector<Color>& operator[](const unsigned int i);
 private:
-	std::vector<vector<Color> > m_image;
+	std::vector<std::vector<Color> > m_image;
 };

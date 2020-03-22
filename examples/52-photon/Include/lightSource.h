@@ -10,7 +10,7 @@ class LightSource
 {
 public:
 	virtual Color GetColor(const Vector& point) const = 0;
-	virtual vector<Vector> GetLights() const = 0;
+	virtual std::vector<Vector> GetLights() const = 0;
 	Color GetBaseColor()
 	{
 		return m_baseColor * m_power;
