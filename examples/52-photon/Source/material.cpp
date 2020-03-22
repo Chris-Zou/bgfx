@@ -13,7 +13,7 @@ Material::Material(const Color& diffuse, const Color& specular, const Color& ref
 {
 }
 
-Color Material::PhongBRDF(const Vector& from, const Vector& light, const Vector&& normal, const Vector& point) const
+Color Material::PhongBRDF(const Vector& from, const Vector& light, const Vector& normal, const Vector& point) const
 {
 	Vector reflectedLight = Shape::Reflect(light * -1, normal);
 	float cosine = from.DotProduct(reflectedLight);

@@ -8,7 +8,7 @@ class Material
 {
 public:
 	Material(const Color& diffuse, const Color& specular, const Color& reflectance, const Color& transmittance, const float shininess);
-	Color PhongBRDF(const Vector& from, const Vector& light, const Vector&& normal, const Vector& point) const;
+	Color PhongBRDF(const Vector& from, const Vector& light, const Vector& normal, const Vector& point) const;
 
 	virtual Color GetDiffuse(const Vector& point) const;
 	Color GetSpecular() const;
