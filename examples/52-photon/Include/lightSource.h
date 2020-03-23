@@ -16,9 +16,17 @@ public:
 		return m_baseColor * m_power;
 	}
 protected:
-	LightSource();
-	LightSource(const float power, const Color& c);
-private:
+	LightSource()
+		: m_power(2.0f)
+		, m_baseColor(WHITE)
+	{}
+
+	LightSource(const float power, const Color& c)
+		: m_power(power)
+		, m_baseColor(c)
+	{}
+
+protected:
 	float m_power;
 	Color m_baseColor;
 };

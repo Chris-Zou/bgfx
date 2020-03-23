@@ -8,12 +8,12 @@ Plane::Plane(const Vector& point, const Vector& normal)
 
 }
 
-float Plane::Intersect(const Ray& ray) const
+float Plane::Intersect(const PhotonRay& ray) const
 {
 	return 0.0f;
 }
 
-void Plane::Intersect(const Ray& ray, float& min_t, Shape*& nearestShape, Shape*& thisShape) const
+void Plane::Intersect(const PhotonRay& ray, float& min_t, Shape*& nearestShape, Shape*& thisShape) const
 {
 
 }

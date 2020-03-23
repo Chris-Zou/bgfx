@@ -3,7 +3,7 @@
 #include "color.h"
 #include "ray.h"
 
-class ColoredRay : public Ray
+class ColoredRay : public PhotonRay
 {
 public:
 	ColoredRay();

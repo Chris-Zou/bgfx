@@ -58,14 +58,14 @@ private:
 	void RenderPixelRange(Image* image) const;
 	void PhotonInteraction(const ColoredRay& lightRay, const bool save);
 	void GeometryInteraction(const ColoredRay& lightRay, const Shape* shape, const Vector& intersection, bool save);
-	Color GetLightRayColor(const Ray& lightRay, const int specularSteps) const;
-	Color DirectLight(const Vector& point, const Vector& normal, const Ray& from, const Shape& shape) const;
-	Color SpecularLight(const Vector& point, const Vector& normal, const Ray& in, const Shape& shape, const int specularSteps) const;
-	Color GeometryEstimateRadiance(const Vector& point, const Vector& normal, const Ray& in, const Shape& shape) const;
+	Color GetLightRayColor(const PhotonRay& lightRay, const int specularSteps) const;
+	Color DirectLight(const Vector& point, const Vector& normal, const PhotonRay& from, const Shape& shape) const;
+	Color SpecularLight(const Vector& point, const Vector& normal, const PhotonRay& in, const Shape& shape, const int specularSteps) const;
+	Color GeometryEstimateRadiance(const Vector& point, const Vector& normal, const PhotonRay& in, const Shape& shape) const;
 	static float GaussianKernel(const Vector& point, const Vector& photon, const float radius);
 	static float SilvermanKernel(const float x);
-	float PathTransmittance(const Ray& lightRay, float tIntersection) const;
-	bool IsShadow(const Ray& lightRay, const Vector& light) const;
+	float PathTransmittance(const PhotonRay& lightRay, float tIntersection) const;
+	bool IsShadow(const PhotonRay& lightRay, const Vector& light) const;
 
 private:
 	unsigned int m_specularSteps = 4;

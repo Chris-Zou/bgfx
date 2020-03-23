@@ -11,14 +11,14 @@ class Shape
 {
 public:
 	Shape();
-	virtual float Intersect(const Ray& lightRay) const = 0;
-	virtual void Intersect(const Ray& lightRay, float& minT, Shape*& nearestShape, Shape*& thisShape) const = 0;
+	virtual float Intersect(const PhotonRay& lightRay) const = 0;
+	virtual void Intersect(const PhotonRay& lightRay, float& minT, Shape*& nearestShape, Shape*& thisShape) const = 0;
 	static Vector Reflect(const Vector& in, const Vector& normal);
-	Ray Refract(const Ray& in, const Vector& point, const Vector& visibleNormal) const;
+	PhotonRay Refract(const PhotonRay& in, const Vector& point, const Vector& visibleNormal) const;
 	bool RussianRoulette(const ColoredRay &in, const Vector &point, ColoredRay &out) const;
 	//virtual bool IsInside(const Vector& point) const;
 	virtual Vector GetNormal(const Vector& point) const = 0;
-	Vector GetVisibleNormal(const Vector& point, const Ray& from) const;
+	Vector GetVisibleNormal(const Vector& point, const PhotonRay& from) const;
 	Material* GetMaterial() const;
 	virtual void SetMaterial(Material* mat);
 	virtual void SetRefractIndex(const float ri);

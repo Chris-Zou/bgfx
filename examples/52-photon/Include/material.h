@@ -23,8 +23,16 @@ private:
 	float m_shininess;
 };
 
+/*
 static Material* NONE = &Material(Material(BLACK, BLACK, BLACK, BLACK, 0.0f));
 static Material* MIRROR = &Material(Material(BLACK, BLACK, WHITE, BLACK, 0.0f));
 static Material* LAMBERTIAN = &Material(Material(WHITE, BLACK, BLACK, BLACK, 0.0f));
 static Material* SPECKLED_LAMBERTIAN = &Material(Material(WHITE / 2, GRAY / 4, BLACK, BLACK, 20.0f));
 static Material* GLASS = &Material(Material(BLACK, BLACK, BLACK, WHITE, 0.0f));
+*/
+
+static Material NONE(BLACK, BLACK, BLACK, BLACK, 0.0f);
+static Material MIRROR(BLACK, BLACK, WHITE, BLACK, 0.0f);
+static Material LAMBERTIAN(WHITE, BLACK, BLACK, BLACK, 0.0f);
+static Material SPECKLED_LAMBERTIAN(WHITE / 2, GRAY / 4, BLACK, BLACK, 20.0f);
+static Material GLASS(BLACK, BLACK, BLACK, WHITE, 0.0f);

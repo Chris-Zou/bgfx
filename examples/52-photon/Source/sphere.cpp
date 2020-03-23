@@ -1,6 +1,6 @@
 #include "../Include/sphere.h"
 
-Sphere::Sphere(const Vector& center, const float radius)
+PhotonSphere::PhotonSphere(const Vector& center, const float radius)
 	: Shape()
 	, m_center(center)
 	, m_radius(radius)
@@ -9,27 +9,27 @@ Sphere::Sphere(const Vector& center, const float radius)
 
 }
 
-float Sphere::Intersect(const Ray& ray) const
+float PhotonSphere::Intersect(const PhotonRay& ray) const
 {
 	return 0.0f;
 }
 
-void Sphere::Intersect(const Ray& ray, float &min_t, Shape* nearestShape, Shape* thisShape) const
+void PhotonSphere::Intersect(const PhotonRay& ray, float &min_t, Shape*& nearestShape, Shape*& thisShape) const
 {
 
 }
 
 
-bool Sphere::IsInside(const Vector& point) const
+bool PhotonSphere::IsInside(const Vector& point) const
 {
 	return false;
 }
 
-Vector Sphere::GetNormal(const Vector& point) const
+Vector PhotonSphere::GetNormal(const Vector& point) const
 {
 	return Vector(0.0f, 0.0f, 0.0f, 0.0f);
 }
-float Sphere::Area(const float radius)
+float PhotonSphere::Area(const float radius)
 {
 	return 2 * PI * radius * radius;
 }

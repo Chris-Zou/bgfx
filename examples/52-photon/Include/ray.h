@@ -2,11 +2,11 @@
 
 #include "vector.h"
 
-class Ray
+class PhotonRay
 {
 public:
-	Ray();
-	Ray(const Vector& pos, const Vector& dir);
+	PhotonRay();
+	PhotonRay(const Vector& pos, const Vector& dir);
 	std::tuple<float, float> Distance(const Vector& to) const;
 	Vector GetScaledPosition(const float s) const;
 	Vector GetPosition() const;

@@ -3,7 +3,7 @@
 ColoredRay::ColoredRay() {}
 
 ColoredRay::ColoredRay(const Vector& pos, const Vector& dir, const Color& c)
-	: Ray(pos, dir)
+	: PhotonRay(pos, dir)
 	, m_color(c)
 {}
 

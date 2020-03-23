@@ -2,17 +2,17 @@
 #include "../Include/ray.h"
 #include "../Include/plane.h"
 
-Ray::Ray()
+PhotonRay::PhotonRay()
 {
 
 }
 
-Ray::Ray(const Vector& pos, const Vector& dir)
+PhotonRay::PhotonRay(const Vector& pos, const Vector& dir)
 	: m_pos(pos)
 	, m_dir(dir)
 {}
 
-std::tuple<float, float> Ray::Distance(const Vector& to) const
+std::tuple<float, float> PhotonRay::Distance(const Vector& to) const
 {
 	Plane plane(to, m_dir);
 	float tProj = plane.Intersect(*this);
@@ -22,17 +22,17 @@ std::tuple<float, float> Ray::Distance(const Vector& to) const
 	return std::make_tuple(dist, tProj);
 }
 
-Vector Ray::GetScaledPosition(const float s) const
+Vector PhotonRay::GetScaledPosition(const float s) const
 {
 	return m_pos + m_dir * s;
 }
 
-Vector Ray::GetPosition() const
+Vector PhotonRay::GetPosition() const
 {
 	return m_pos;
 }
 
-Vector Ray::GetDirection() const
+Vector PhotonRay::GetDirection() const
 {
 	return m_dir;
 }

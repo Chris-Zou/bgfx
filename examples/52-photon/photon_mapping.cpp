@@ -22,6 +22,12 @@
 #include <vector>
 #include <random>
 
+#include "Include/scene.h"
+#include "Include/pinhole.h"
+#include "Include/plane.h"
+#include "Include/sphere.h"
+#include "Include/pointLight.h"
+
 namespace PhotonMapping
 {
 	class ExamplePhotonMapping : public entry::AppI
@@ -49,10 +55,39 @@ namespace PhotonMapping
 			init.resolution.reset = m_reset;
 			bgfx::init(init);
 
-			// Enable m_debug text.
 			bgfx::setDebug(m_debug);
 
-			bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH | BGFX_CLEAR_STENCIL, 0x000000ff, 1.0f, 0);
+			m_cornellBox.SetCamera(Pinhole(Vector(0, 1, 0), Vector(1, 0, 0), Vector(0, 0, 1), Vector(0, 0.25f, -1.7f), PI / 4, 1.0, 1920, 1080));
+
+			Plane leftWall(Vector(-1, 0, 0), Vector(1, 0, 0));
+			leftWall.SetMaterial(new Material(RED, BLACK, BLACK, BLACK, 0.0f));
+			m_cornellBox.AddShape(leftWall);
+
+			Plane rightWall(Plane(Vector(1, 0, 0), Vector(-1, 0, 0)));
+			rightWall.SetMaterial(new Material(GREEN, BLACK, BLACK, BLACK, 0.0f));
+			m_cornellBox.AddShape(rightWall);
+
+			m_cornellBox.AddShape(Plane(Vector(0, 1, 0), Vector(0, -1, 0)));
+			m_cornellBox.AddShape(Plane(Vector(0, -0.25f, 0), Vector(0, 1, 0)));
+			m_cornellBox.AddShape(Plane(Vector(0, 0, 1), Vector(0, 0, -1)));
+
+			PhotonSphere yellowSphere(Vector(-0.45f, 0.1f, 0.4f), 0.25f);
+			yellowSphere.SetMaterial(new Material(YELLOW, GRAY / 4.0f, BLACK, BLACK, 1.5f));
+			m_cornellBox.AddShape(yellowSphere);
+
+			PhotonSphere purpleSphere(Vector(0.45f, 0.1f, 0.4f), 0.25f);
+			purpleSphere.SetMaterial(new Material(BLACK, BLACK, PURPLE, BLACK, 0.0f));
+			m_cornellBox.AddShape(purpleSphere);
+
+			m_cornellBox.AddLightSource(PointLight(Vector(0.0f, 0.6f, -0.1f), 1.6f, WHITE));
+
+			m_cornellBox.SetEmitedPhotons(100000);
+			m_cornellBox.SetKNearestNeighbours(300);
+
+			m_cornellBox.EmitPhotons();
+
+			m_image = m_cornellBox.RenderMultiThread(0);
+			m_image->Save("corrnelBox.ppm", SaveMode::CLAMP);
 		}
 
 		virtual int shutdown() override
@@ -74,6 +109,9 @@ namespace PhotonMapping
 		uint32_t m_height;
 		uint32_t m_debug;
 		uint32_t m_reset;
+
+		Scene m_cornellBox;
+		Image* m_image;
 	};
 
 } // namespace

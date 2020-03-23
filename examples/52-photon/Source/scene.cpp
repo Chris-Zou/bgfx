@@ -36,7 +36,7 @@ Image* Scene::Render() const
 		for (int j = 0; j < m_camera->GetWidth(); ++j)
 		{
 			currentPixel += advanceX;
-			(*rendered)[i][j] = GetLightRayColor(Ray(m_camera->GetFocalPoint(), currentPixel), m_specularSteps);
+			(*rendered)[i][j] = GetLightRayColor(PhotonRay(m_camera->GetFocalPoint(), currentPixel), m_specularSteps);
 		}
 		currentRow -= advanceY;
 		currentPixel = currentRow;
@@ -73,7 +73,7 @@ void Scene::RenderPixelRange(Image* img) const
 		for (int j = 0; j < m_camera->GetWidth(); ++j)
 		{
 			currentPixel += advanceX;
-			(*img)[i][j] = GetLightRayColor(Ray(m_camera->GetFocalPoint(), currentPixel), m_specularSteps);
+			(*img)[i][j] = GetLightRayColor(PhotonRay(m_camera->GetFocalPoint(), currentPixel), m_specularSteps);
 		}
 
 		printProgressBar(i, (int)m_camera->GetHeight());
@@ -135,7 +135,7 @@ void Scene::GeometryInteraction(const ColoredRay& lightRay, const Shape* shape, 
 		PhotonInteraction(bouncedRay, true);
 }
 
-Color Scene::GetLightRayColor(const Ray& lightRay, const int specularSteps) const
+Color Scene::GetLightRayColor(const PhotonRay& lightRay, const int specularSteps) const
 {
 	if (specularSteps == 0)
 		return BLACK;
@@ -157,7 +157,7 @@ Color Scene::GetLightRayColor(const Ray& lightRay, const int specularSteps) cons
 	return (DirectLight(intersection, normal, lightRay, *nearestShape) + SpecularLight(intersection, normal, lightRay, *nearestShape, specularSteps) + GeometryEstimateRadiance(intersection, normal, lightRay, *nearestShape) + emittedLight) * PathTransmittance(lightRay, mint);
 }
 
-Color Scene::DirectLight(const Vector& point, const Vector& normal, const Ray& from, const Shape& shape) const
+Color Scene::DirectLight(const Vector& point, const Vector& normal, const PhotonRay& from, const Shape& shape) const
 {
 	Color ret = BLACK;
 
@@ -166,13 +166,13 @@ Color Scene::DirectLight(const Vector& point, const Vector& normal, const Ray& f
 		vector<Vector> lights = m_lightSource[i]->GetLights();
 		for (int j = 0; j < lights.size(); ++j)
 		{
-			Ray lightRay = Ray(point, lights[j]);
+			PhotonRay lightRay = PhotonRay(point, lights[j]);
 			if (!IsShadow(lightRay, lights[j]))
 			{
 				float multiplier = lightRay.GetDirection().DotProduct(normal);
 				if (multiplier > 0.0f)
 				{
-					ret += m_lightSource[i]->GetColor(point) * shape.GetMaterial()->PhongBRDF(from.GetDirection() * -1.0f, lightRay.GetDirection(), normal, point) * multiplier * PathTransmittance(Ray(point, lights[j]), point.Distance(lights[j]));
+					ret += m_lightSource[i]->GetColor(point) * shape.GetMaterial()->PhongBRDF(from.GetDirection() * -1.0f, lightRay.GetDirection(), normal, point) * multiplier * PathTransmittance(PhotonRay(point, lights[j]), point.Distance(lights[j]));
 				}
 			}
 		}
@@ -181,7 +181,7 @@ Color Scene::DirectLight(const Vector& point, const Vector& normal, const Ray& f
 	return ret;
 }
 
-Color Scene::SpecularLight(const Vector& point, const Vector& normal, const Ray& in, const Shape& shape, const int specularSteps) const
+Color Scene::SpecularLight(const Vector& point, const Vector& normal, const PhotonRay& in, const Shape& shape, const int specularSteps) const
 {
 	Color ret = BLACK;
 
@@ -191,21 +191,21 @@ Color Scene::SpecularLight(const Vector& point, const Vector& normal, const Ray&
 	if (shape.GetMaterial()->GetReflectance() != BLACK)
 	{
 		Vector reflectedDir = Shape::Reflect(in.GetDirection(), normal);
-		Ray reflectedRay = Ray(point, reflectedDir);
+		PhotonRay reflectedRay = PhotonRay(point, reflectedDir);
 
 		ret += GetLightRayColor(reflectedRay, specularSteps - 1) * shape.GetMaterial()->GetReflectance();
 	}
 
 	if (shape.GetMaterial()->GetTransmittance() != BLACK)
 	{
-		Ray refractedRay = shape.Refract(in, point, normal);
+		PhotonRay refractedRay = shape.Refract(in, point, normal);
 		ret += GetLightRayColor(refractedRay, specularSteps - 1) * shape.GetMaterial()->GetTransmittance();
 	}
 
 	return ret;
 }
 
-Color Scene::GeometryEstimateRadiance(const Vector& point, const Vector& normal, const Ray& in, const Shape& shape) const
+Color Scene::GeometryEstimateRadiance(const Vector& point, const Vector& normal, const PhotonRay& in, const Shape& shape) const
 {
 	if ((shape.GetMaterial()->GetDiffuse(point) == BLACK) && (shape.GetMaterial()->GetSpecular() == BLACK))
 		return BLACK;
@@ -226,7 +226,7 @@ Color Scene::GeometryEstimateRadiance(const Vector& point, const Vector& normal,
 		}
 	}
 
-	return ret / Sphere::Area(radius);
+	return ret / PhotonSphere::Area(radius);
 }
 
 float Scene::GaussianKernel(const Vector& point, const Vector& photon, const float radius)
@@ -241,12 +241,12 @@ float Scene::SilvermanKernel(const float x)
 	return 3 / PI * pow(1 - x * x, 2);
 }
 
-float Scene::PathTransmittance(const Ray &lightRay, float tIntersection) const
+float Scene::PathTransmittance(const PhotonRay &lightRay, float tIntersection) const
 {
 	return 1.0f;
 }
 
-bool Scene::IsShadow(const Ray &lightRay, const Vector &light) const
+bool Scene::IsShadow(const PhotonRay &lightRay, const Vector &light) const
 {
 	float tLight = lightRay.GetPosition().Distance(light);
 	for (unsigned int i = 0; i < m_shapes.size(); ++i)
