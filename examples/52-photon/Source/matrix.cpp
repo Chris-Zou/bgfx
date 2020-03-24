@@ -50,7 +50,10 @@ std::ostream& operator<<(std::ostream& out, const Matrix &m)
 PoseTransformationMatrix::PoseTransformationMatrix(const Vector& origin, const Vector& xAxis, const Vector& yAxis, const Vector& zAxis)
 	: Matrix(nullptr)
 {
-
+	m_data[0] = xAxis.GetX();	m_data[1] = yAxis.GetX();	m_data[2] = zAxis.GetX();	m_data[3] = origin.GetX();
+	m_data[4] = xAxis.GetY();	m_data[5] = yAxis.GetY();	m_data[6] = zAxis.GetY();	m_data[7] = origin.GetY();
+	m_data[8] = xAxis.GetZ();	m_data[9] = yAxis.GetZ();	m_data[10] = zAxis.GetZ();	m_data[11] = origin.GetZ();
+	m_data[12] = 0;				m_data[13] = 0;				m_data[14] = 0;				m_data[15] = 1;
 }
 
 PoseTransformationMatrix PoseTransformationMatrix::GetPoseTransformation(const Vector& point, const Vector& zAxis)
