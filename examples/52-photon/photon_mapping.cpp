@@ -57,29 +57,29 @@ namespace PhotonMapping
 
 			bgfx::setDebug(m_debug);
 
-			m_cornellBox.SetCamera(Pinhole(Vector(0, 1, 0), Vector(1, 0, 0), Vector(0, 0, 1), Vector(0, 0.25f, -1.7f), PI / 4, 1.0, 1920, 1080));
+			m_cornellBox.SetCamera(new Pinhole(Vector(0, 1, 0), Vector(1, 0, 0), Vector(0, 0, 1), Vector(0, 0.25f, -1.7f), PI / 4, 1.0, 1920, 1080));
 
 			Plane leftWall(Vector(-1, 0, 0), Vector(1, 0, 0));
 			leftWall.SetMaterial(new Material(RED, BLACK, BLACK, BLACK, 0.0f));
-			m_cornellBox.AddShape(leftWall);
+			m_cornellBox.AddShape(&leftWall);
 
 			Plane rightWall(Plane(Vector(1, 0, 0), Vector(-1, 0, 0)));
 			rightWall.SetMaterial(new Material(GREEN, BLACK, BLACK, BLACK, 0.0f));
-			m_cornellBox.AddShape(rightWall);
+			m_cornellBox.AddShape(&rightWall);
 
-			m_cornellBox.AddShape(Plane(Vector(0, 1, 0), Vector(0, -1, 0)));
-			m_cornellBox.AddShape(Plane(Vector(0, -0.25f, 0), Vector(0, 1, 0)));
-			m_cornellBox.AddShape(Plane(Vector(0, 0, 1), Vector(0, 0, -1)));
+			m_cornellBox.AddShape(new Plane(Vector(0, 1, 0), Vector(0, -1, 0)));
+			m_cornellBox.AddShape(new Plane(Vector(0, -0.25f, 0), Vector(0, 1, 0)));
+			m_cornellBox.AddShape(new Plane(Vector(0, 0, 1), Vector(0, 0, -1)));
 
 			PhotonSphere yellowSphere(Vector(-0.45f, 0.1f, 0.4f), 0.25f);
 			yellowSphere.SetMaterial(new Material(YELLOW, GRAY / 4.0f, BLACK, BLACK, 1.5f));
-			m_cornellBox.AddShape(yellowSphere);
+			m_cornellBox.AddShape(&yellowSphere);
 
 			PhotonSphere purpleSphere(Vector(0.45f, 0.1f, 0.4f), 0.25f);
 			purpleSphere.SetMaterial(new Material(BLACK, BLACK, PURPLE, BLACK, 0.0f));
-			m_cornellBox.AddShape(purpleSphere);
+			m_cornellBox.AddShape(&purpleSphere);
 
-			m_cornellBox.AddLightSource(PointLight(Vector(0.0f, 0.6f, -0.1f), 1.6f, WHITE));
+			m_cornellBox.AddLightSource(new PointLight(Vector(0.0f, 0.6f, -0.1f), 1.6f, WHITE));
 
 			m_cornellBox.SetEmitedPhotons(100000);
 			m_cornellBox.SetKNearestNeighbours(300);

@@ -15,19 +15,19 @@ class Scene
 {
 public:
 
-	void SetCamera(Camera& c)
+	void SetCamera(Camera* c)
 	{
-		m_camera = &c;
+		m_camera = c;
 	}
 
-	void AddLightSource(LightSource& ls)
+	void AddLightSource(LightSource* ls)
 	{
-		m_lightSource.push_back(&ls);
+		m_lightSource.push_back(ls);
 	}
 
-	void AddShape(Shape& shape)
+	void AddShape(Shape* shape)
 	{
-		m_shapes.push_back(&shape);
+		m_shapes.push_back(shape);
 	}
 
 	void SetImageDimensions(unsigned int width, unsigned int height)
