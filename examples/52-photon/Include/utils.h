@@ -54,3 +54,27 @@ inline static Vector VisibleNormal(const Vector& normal, const Vector& from)
 	else
 		return normal;
 }
+
+const float INTERSECTION_TH = 0.00001f;
+
+inline static float GetNearestInFront(const float t)
+{
+	// Return the intersection point distance if it is in front of the camera.
+	return (t > INTERSECTION_TH) ? t : FLT_MAX;
+}
+
+inline static float GetNearestInFront(const float t_1, const float t_2)
+{
+	if ((t_1 > INTERSECTION_TH) & ((t_1 < t_2) | (t_2 <= INTERSECTION_TH)))
+	{
+		return t_1;
+	}
+	else if ((t_2 > INTERSECTION_TH) & ((t_2 < t_1) | (t_1 <= INTERSECTION_TH)))
+	{
+		return t_2;
+	}
+	else
+	{
+		return FLT_MAX;
+	}
+}

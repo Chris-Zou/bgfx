@@ -1,5 +1,7 @@
 #include "../Include/shape.h"
 #include "bx/bx.h"
+#include "../Include/matrix.h"
+#include "../Include/ray.h"
 
 Shape::Shape()
 {
@@ -33,9 +35,39 @@ PhotonRay Shape::Refract(const PhotonRay& in, const Vector& point, const Vector&
 
 bool Shape::RussianRoulette(const ColoredRay& in, const Vector& point, ColoredRay& out) const
 {
-	BX_UNUSED(in);
-	BX_UNUSED(point);
-	BX_UNUSED(out);
+	float random = GetRandomValue();
+
+	if (random < m_material->GetDiffuse(point).MeanRGB())
+	{
+		PoseTransformationMatrix localToWorld = PoseTransformationMatrix::GetPoseTransformation(point, GetVisibleNormal(point, in));
+
+		float inclination, azimuth;
+		std::tie(inclination, azimuth) = UniformCosineSampling();
+
+		Vector localRay(sin(inclination) * cos(azimuth), cos(inclination) * cos(azimuth), sin(azimuth));
+		out = ColoredRay(point, localToWorld * localRay, in.GetColor() * m_material->GetDiffuse(point) / m_material->GetDiffuse(point).MeanRGB());
+
+		return true;
+	}
+	else if (random < (m_material->GetDiffuse(point).MeanRGB() + m_material->GetSpecular().MeanRGB()))
+	{
+		PoseTransformationMatrix localToWorld = PoseTransformationMatrix::GetPoseTransformation(point, GetVisibleNormal(point, in));
+
+		float inclination, azimuth;
+		std::tie(inclination, azimuth) = PhongSpecularLobeSampling(m_material->GetShininess());
+
+		Vector localRay(sin(inclination) * cos(azimuth), cos(inclination) * cos(azimuth), sin(azimuth));
+		out = ColoredRay(point, localToWorld * localRay, in.GetColor() * m_material->GetSpecular() / m_material->GetSpecular().MeanRGB() * (m_material->GetShininess() + 2) / (m_material->GetShininess() + 1));
+
+		return true;
+	}
+	else if (random < (m_material->GetDiffuse(point).MeanRGB() + m_material->GetSpecular().MeanRGB() + m_material->GetReflectance().MeanRGB() + m_material->GetTransmittance().MeanRGB()))
+	{
+		PhotonRay refractedray = Refract(in, point, GetVisibleNormal(point, in));
+		out = ColoredRay(point, refractedray.GetDirection(), in.GetColor() * m_material->GetTransmittance() / m_material->GetTransmittance().MeanRGB());
+
+		return true;
+	}
 
 	return true;
 }

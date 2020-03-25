@@ -30,3 +30,4 @@ private:
 	Color m_emitted = BLACK;
 	float m_powerEmitted = 0.0f;
 };
+
