@@ -6,6 +6,8 @@
 
 static constexpr float PI = 3.1415926535897932f;
 
+const float INTERSECTION_TH = 0.00001f;
+
 static constexpr float VACUUM_RI = 1.0f;
 static constexpr float AIR_RI = 1.0002926f;
 static constexpr float WATER_RI = 1.333f;
@@ -55,11 +57,8 @@ inline static Vector VisibleNormal(const Vector& normal, const Vector& from)
 		return normal;
 }
 
-const float INTERSECTION_TH = 0.00001f;
-
 inline static float GetNearestInFront(const float t)
 {
-	// Return the intersection point distance if it is in front of the camera.
 	return (t > INTERSECTION_TH) ? t : FLT_MAX;
 }
 

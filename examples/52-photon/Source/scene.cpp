@@ -2,6 +2,7 @@
 #include "../Include/image.h"
 #include "../Include/sphere.h"
 #include "../Include/matrix.h"
+#include "bx/bx.h"
 #include <cfloat>
 #include <iostream>
 #include <thread>
@@ -47,7 +48,7 @@ Image* Scene::Render() const
 	return rendered;
 }
 
-Image* Scene::RenderMultiThread(const unsigned int threadCount) const
+Image* Scene::RenderMultiThread() const
 {
 	Image *img = new Image(m_camera->GetWidth(), m_camera->GetHeight());
 
@@ -69,7 +70,7 @@ void Scene::RenderPixelRange(Image* img) const
 	Vector currentPixel;
 	for (int i = 0; i < m_camera->GetHeight(); ++i)
 	{
-		currentPixel = firstPixel - advanceY * i;
+		currentPixel = firstPixel - advanceY * (float)i;
 		for (int j = 0; j < m_camera->GetWidth(); ++j)
 		{
 			currentPixel += advanceX;
@@ -93,7 +94,7 @@ void Scene::EmitPhotons()
 				float inclination, azimuth;
 				tie(inclination, azimuth) = UniformSphereSampling();
 				Vector localRay(sin(inclination) * cos(azimuth), sin(inclination) * cos(azimuth), cos(inclination));
-				ColoredRay lightRay(pointLight, fromLocalToGlobal * localRay, light->GetBaseColor() / m_photonEmitted / light->GetLights().size() * 4 * PI);
+				ColoredRay lightRay(pointLight, fromLocalToGlobal * localRay, light->GetBaseColor() / (float)m_photonEmitted / float(light->GetLights().size()) * 4.0f * PI);
 				PhotonInteraction(lightRay, false);
 			}
 		}
@@ -141,7 +142,7 @@ Color Scene::GetLightRayColor(const PhotonRay& lightRay, const int specularSteps
 		return BLACK;
 
 	float mint = FLT_MAX;
-	Shape* nearestShape;
+	Shape* nearestShape = nullptr;
 	for (int i = 0; i < m_shapes.size(); ++i)
 	{
 		m_shapes[i]->Intersect(lightRay, mint, nearestShape, const_cast<Shape*>(m_shapes[i]));
@@ -243,6 +244,9 @@ float Scene::SilvermanKernel(const float x)
 
 float Scene::PathTransmittance(const PhotonRay &lightRay, float tIntersection) const
 {
+	BX_UNUSED(lightRay);
+	BX_UNUSED(tIntersection);
+
 	return 1.0f;
 }
 

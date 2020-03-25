@@ -86,7 +86,7 @@ namespace PhotonMapping
 
 			m_cornellBox.EmitPhotons();
 
-			m_image = m_cornellBox.RenderMultiThread(0);
+			m_image = m_cornellBox.RenderMultiThread();
 			m_image->Save("corrnelBox.ppm", SaveMode::CLAMP);
 		}
 

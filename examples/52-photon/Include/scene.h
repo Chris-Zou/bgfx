@@ -51,7 +51,7 @@ public:
 	}
 
 	Image * Render() const;
-	Image* RenderMultiThread(const unsigned int threads) const;
+	Image* RenderMultiThread() const;
 	void EmitPhotons();
 
 private:

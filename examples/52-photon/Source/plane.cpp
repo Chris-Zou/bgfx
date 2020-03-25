@@ -1,4 +1,5 @@
 #include "../Include/plane.h"
+#include "bx/bx.h"
 
 Plane::Plane(const Vector& point, const Vector& normal)
 	: Shape()
@@ -44,7 +45,8 @@ void Plane::Intersect(const PhotonRay& ray, float& min_t, Shape*& nearestShape, 
 
 bool Plane::IsInside(const Vector& point) const
 {
-	return false;
+	BX_UNUSED(point);
+	throw 1;
 }
 
 Vector Plane::GetNormal() const
@@ -54,5 +56,6 @@ Vector Plane::GetNormal() const
 
 Vector Plane::GetNormal(const Vector& point) const
 {
+	BX_UNUSED(point);
 	return m_normal;
 }

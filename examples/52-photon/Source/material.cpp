@@ -3,6 +3,7 @@
 #include "../Include/material.h"
 #include "../Include/shape.h"
 #include "../Include/utils.h"
+#include "bx/bx.h"
 
 Material::Material(const Color& diffuse, const Color& specular, const Color& reflectance, const Color& transmittance, const float shininess)
 	: m_kd(diffuse)
@@ -25,6 +26,7 @@ Color Material::PhongBRDF(const Vector& from, const Vector& light, const Vector&
 
 Color Material::GetDiffuse(const Vector& point) const
 {
+	BX_UNUSED(point);
 	return m_kd;
 }
 
