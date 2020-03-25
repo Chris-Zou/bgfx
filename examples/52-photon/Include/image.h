@@ -17,6 +17,7 @@ public:
 	Image(const unsigned int width, const unsigned int height);
 	Image(const std::string& filename);
 	void Save(const std::string& filename, SaveMode mode = DIM_TO_WHITE) const;
+	void SaveBMP(const std::string& filename) const;
 	unsigned int GetWidth() const;
 	unsigned int GetHeight() const;
 	std::vector<Color>& operator[](const unsigned int i);

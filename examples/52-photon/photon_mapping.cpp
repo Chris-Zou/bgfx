@@ -36,6 +36,7 @@ namespace PhotonMapping
 		ExamplePhotonMapping(const char* _name, const char* _description, const char* _url)
 			: entry::AppI(_name, _description, _url)
 		{
+			m_image = nullptr;
 		}
 
 		void init(int32_t _argc, const char* const* _argv, uint32_t _width, uint32_t _height) override
@@ -87,7 +88,8 @@ namespace PhotonMapping
 			m_cornellBox.EmitPhotons();
 
 			m_image = m_cornellBox.RenderMultiThread();
-			m_image->Save("corrnelBox.ppm", SaveMode::CLAMP);
+			if(m_image != nullptr)
+				m_image->SaveBMP("corrnelBox.bmp");
 		}
 
 		virtual int shutdown() override
