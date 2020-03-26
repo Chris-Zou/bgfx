@@ -1,5 +1,7 @@
 #include "../Include/kdtree.h"
+#include "bx/bx.h"
 #include <fstream>
+#include <iterator>
 
 using namespace std;
 
@@ -40,20 +42,20 @@ int KDTree::Find(const Vector& p, float radius, list<Node*>* nodes) const
 	if (nodes)
 	{
 		Find(p, 1, radius, *nodes);
-		return nodes->size();
+		return (int)nodes->size();
 	}
 	else
 	{
 		list<Node*> local_nodes;
 		Find(p, 1, radius, local_nodes);
 
-		return local_nodes.size();
+		return (int)local_nodes.size();
 	}
 }
 
 int KDTree::Size() const
 {
-	return m_balanced.size();
+	return (int)m_balanced.size();
 }
 
 bool KDTree::IsEmpty() const
@@ -81,20 +83,26 @@ void KDTree::Find(const Vector& point, int nb_elements, vector<Node*>& nodes, fl
 	Find(point, 1, nb_elements, max_distance, nodes, dist);
 }
 
+struct CompSortedNode
+{
+	bool operator()(const SortedNode& a, const SortedNode& b)
+	{
+		return a.m_distance < b.m_distance;
+	}
+};
 
-
-void KDTree::FindKNN_BruteForce(const Vector&p, int nb_elements, std::vector<Node*>& nodes, float &max_distance)
+void KDTree::FindKNN_BruteForce(const Vector&p, int nb_elements, std::vector<Node*>& nodes, float &max_distance) const
 {
 	std::vector<SortedNode> tmpNodes;
-	for (int i = 0; i < nodes.size(); ++i)
+	for (std::list<Node>::const_iterator it = m_nodes.begin(); it != m_nodes.end(); ++it)
 	{
 		SortedNode sn;
-		sn.m_node = nodes[i];
-		sn.m_distance = p.Distance(nodes[i]->GetPoint());
+		sn.m_node = const_cast<Node*>(&(*it));
+		sn.m_distance = p.Distance((*it).GetPoint());
 		tmpNodes.push_back(sn);
 	}
 
-	std::sort(tmpNodes.begin(), tmpNodes.end());
+	std::sort(tmpNodes.begin(), tmpNodes.end(), CompSortedNode());
 
 	int count = std::min((int)tmpNodes.size(), nb_elements);
 	for (int i = 0; i < count; ++i)
@@ -104,6 +112,8 @@ void KDTree::FindKNN_BruteForce(const Vector&p, int nb_elements, std::vector<Nod
 
 	if (count > 0)
 		max_distance = tmpNodes[count - 1].m_distance;
+
+	return;
 }
 
 const Node& KDTree::Find(const Vector& p) const
@@ -142,7 +152,7 @@ void KDTree::UpdateHeapNodes(Node& node, float distance, int nb_elements, vector
 {
 	if (nodes.size() < nb_elements)
 	{
-		dist.push_back(pair<int, float>(nodes.size(), distance));
+		dist.push_back(pair<int, float>((int)nodes.size(), distance));
 		nodes.push_back(&node);
 
 		if (nodes.size() == nb_elements)
@@ -163,22 +173,42 @@ void KDTree::UpdateHeapNodes(Node& node, float distance, int nb_elements, vector
 
 void KDTree::Find(const Vector& p, int index, int nb_elements, float &dist_worst, vector<Node*>& nodes, vector<pair<int, float> >&dist) const
 {
+	BX_UNUSED(p);
+	BX_UNUSED(index);
+	BX_UNUSED(nb_elements);
+	BX_UNUSED(dist_worst);
+	BX_UNUSED(nodes);
+	BX_UNUSED(dist);
 
 }
 
 int KDTree::Closest(const Vector& p, int index, int best) const
 {
+	BX_UNUSED(p);
+	BX_UNUSED(index);
+	BX_UNUSED(best);
+
 	return 0;
 }
 
 void KDTree::MedianSplit(vector<Node>& p, int start, int end, int median, EDimension& axis)
 {
-
+	BX_UNUSED(p);
+	BX_UNUSED(start);
+	BX_UNUSED(end);
+	BX_UNUSED(median);
+	BX_UNUSED(axis);
 }
 
 void KDTree::BalanceSegment(vector<Node>& pbal, vector<Node>& porg, int index, int start, int end, const Vector& bbmin, const Vector& bbmax)
 {
-
+	BX_UNUSED(pbal);
+	BX_UNUSED(porg);
+	BX_UNUSED(index);
+	BX_UNUSED(start);
+	BX_UNUSED(end);
+	BX_UNUSED(bbmin);
+	BX_UNUSED(bbmax);
 }
 
 void KDTree::Balance()
@@ -188,5 +218,5 @@ void KDTree::Balance()
 
 void KDTree::DumpToFile(const string& filename)
 {
-
+	BX_UNUSED(filename);
 }

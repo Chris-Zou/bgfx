@@ -120,7 +120,7 @@ void Scene::PhotonInteraction(const ColoredRay& ray, bool save)
 void Scene::GeometryInteraction(const ColoredRay& lightRay, const Shape* shape, const Vector& intersection, bool save)
 {
 	auto mat = shape->GetMaterial();
-	save &= !((mat->GetDiffuse(intersection) == BLACK) && ((mat->GetSpecular() != BLACK) | (mat->GetTransmittance() != BLACK)));
+	save &= !((mat->GetDiffuse(intersection) == BLACK) & ((mat->GetSpecular() != BLACK) | (mat->GetTransmittance() != BLACK)));
 
 	float cosine = abs(lightRay.GetDirection().DotProduct(shape->GetNormal(intersection)));
 	ColoredRay in(lightRay.GetPosition(), lightRay.GetDirection(), lightRay.GetColor() * cosine);
@@ -216,7 +216,7 @@ Color Scene::GeometryEstimateRadiance(const Vector& point, const Vector& normal,
 
 	vector<Node*> nodeList;
 	float radius;
-	m_diffusePhotonMap.Find(point, m_photonsNeighbours, nodeList, radius);
+	m_diffusePhotonMap.FindKNN_BruteForce(point, m_photonsNeighbours, nodeList, radius);
 
 	for (auto nodeIt = nodeList.begin(); nodeIt < nodeList.end(); ++nodeIt)
 	{
