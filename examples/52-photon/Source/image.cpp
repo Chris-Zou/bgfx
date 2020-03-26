@@ -160,12 +160,12 @@ void Image::Save(const std::string& filename, SaveMode mode) const
 
 void Image::SaveBMP(const string& filename) const
 {
-	BMP bmp(m_image.size(), m_image[0].size());
-	for (unsigned int i = 0; i < m_image.size(); ++i)
+	BMP bmp(m_image[0].size(), m_image.size());
+	for (unsigned int i = 0; i < m_image[0].size(); ++i)
 	{
-		for (unsigned int j = 0; j < m_image[0].size(); ++j)
+		for (unsigned int j = 0; j < m_image.size(); ++j)
 		{
-			Color tmp = m_image[i][j];		
+			Color tmp = m_image[j][i];		
 			bmp.fill_point(i, j, 255 * tmp.GetR(), 255 * tmp.GetG(), 255 * tmp.GetB(), 255);
 		}
 	}

@@ -101,7 +101,7 @@ namespace PhotonMapping
 
 		bool update() override
 		{
-			return true;
+			return false;
 		}
 
 	public:

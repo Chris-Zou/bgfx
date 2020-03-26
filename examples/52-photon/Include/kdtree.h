@@ -24,6 +24,18 @@ private:
 	Photon		m_photon;
 };
 
+class SortedNode
+{
+public:
+	Node* m_node;
+	float m_distance = 0.0f;
+
+	bool operator()(const SortedNode& other)
+	{
+		return m_distance < other.m_distance;
+	}
+};
+
 class KDTree
 {
 public:
@@ -32,6 +44,7 @@ public:
 	void Store(const Vector& point, const Photon& photon);
 	int Find(const Vector&p, float radius, std::list<Node*>* nodes) const;
 	void Find(const Vector&p, int nb_elements, std::vector<Node*>& nodes, float &max_distance) const;
+	void FindKNN_BruteForce(const Vector&p, int nb_elements, std::vector<Node*>& nodes, float &max_distance);
 	const Node& Find(const Vector&p) const;
 	void Balance();
 	int Size() const;

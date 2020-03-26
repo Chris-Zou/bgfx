@@ -81,6 +81,31 @@ void KDTree::Find(const Vector& point, int nb_elements, vector<Node*>& nodes, fl
 	Find(point, 1, nb_elements, max_distance, nodes, dist);
 }
 
+
+
+void KDTree::FindKNN_BruteForce(const Vector&p, int nb_elements, std::vector<Node*>& nodes, float &max_distance)
+{
+	std::vector<SortedNode> tmpNodes;
+	for (int i = 0; i < nodes.size(); ++i)
+	{
+		SortedNode sn;
+		sn.m_node = nodes[i];
+		sn.m_distance = p.Distance(nodes[i]->GetPoint());
+		tmpNodes.push_back(sn);
+	}
+
+	std::sort(tmpNodes.begin(), tmpNodes.end());
+
+	int count = std::min((int)tmpNodes.size(), nb_elements);
+	for (int i = 0; i < count; ++i)
+	{
+		nodes.push_back(tmpNodes[i].m_node);
+	}
+
+	if (count > 0)
+		max_distance = tmpNodes[count - 1].m_distance;
+}
+
 const Node& KDTree::Find(const Vector& p) const
 {
 	return m_balanced[Closest(p, 1, 1)];

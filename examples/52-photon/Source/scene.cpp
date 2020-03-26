@@ -171,6 +171,7 @@ Color Scene::DirectLight(const Vector& point, const Vector& normal, const Photon
 			if (!IsShadow(lightRay, lights[j]))
 			{
 				float multiplier = lightRay.GetDirection().DotProduct(normal);
+				multiplier *= -1.0f;
 				if (multiplier > 0.0f)
 				{
 					ret += m_lightSource[i]->GetColor(point) * shape.GetMaterial()->PhongBRDF(from.GetDirection() * -1.0f, lightRay.GetDirection(), normal, point) * multiplier * PathTransmittance(PhotonRay(point, lights[j]), point.Distance(lights[j]));
