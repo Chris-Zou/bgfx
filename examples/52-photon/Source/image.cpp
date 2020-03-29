@@ -165,7 +165,7 @@ void Image::SaveBMP(const string& filename) const
 	{
 		for (unsigned int j = 0; j < m_image.size(); ++j)
 		{
-			Color tmp = m_image[j][i];		
+			Color tmp = m_image[m_image.size() - j - 1][i];
 			bmp.fill_point(i, j, 255 * tmp.GetR(), 255 * tmp.GetG(), 255 * tmp.GetB(), 255);
 		}
 	}
