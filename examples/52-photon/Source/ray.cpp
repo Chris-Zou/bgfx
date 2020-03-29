@@ -9,7 +9,7 @@ PhotonRay::PhotonRay()
 
 PhotonRay::PhotonRay(const Vector& pos, const Vector& dir)
 	: m_pos(pos)
-	, m_dir(dir)
+	, m_dir((dir - pos).Normalize())
 {}
 
 std::tuple<float, float> PhotonRay::Distance(const Vector& to) const

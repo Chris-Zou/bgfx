@@ -34,6 +34,11 @@ public:
 		return m_b;
 	}
 
+	bool Isnan() const
+	{
+		return isnan(m_r) || isnan(m_g) || isnan(m_b);
+	}
+
 	Color operator+(const Color& _c)
 	{
 		return Color(m_r + _c.m_r, m_g + _c.m_g, m_b + _c.m_b);

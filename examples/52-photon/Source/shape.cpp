@@ -2,6 +2,7 @@
 #include "bx/bx.h"
 #include "../Include/matrix.h"
 #include "../Include/ray.h"
+#include <iostream>
 
 Shape::Shape()
 {
@@ -45,7 +46,8 @@ bool Shape::RussianRoulette(const ColoredRay& in, const Vector& point, ColoredRa
 		std::tie(inclination, azimuth) = UniformCosineSampling();
 
 		Vector localRay(sin(inclination) * cos(azimuth), cos(inclination) * cos(azimuth), sin(azimuth));
-		out = ColoredRay(point, localToWorld * localRay, in.GetColor() * m_material->GetDiffuse(point) / m_material->GetDiffuse(point).MeanRGB());
+
+		out = ColoredRay(point, localToWorld * localRay, in.GetColor() * m_material->GetDiffuse(point) / (m_material->GetDiffuse(point).MeanRGB() + 0.00001f));
 
 		return true;
 	}
@@ -57,14 +59,16 @@ bool Shape::RussianRoulette(const ColoredRay& in, const Vector& point, ColoredRa
 		std::tie(inclination, azimuth) = PhongSpecularLobeSampling(m_material->GetShininess());
 
 		Vector localRay(sin(inclination) * cos(azimuth), cos(inclination) * cos(azimuth), sin(azimuth));
-		out = ColoredRay(point, localToWorld * localRay, in.GetColor() * m_material->GetSpecular() / m_material->GetSpecular().MeanRGB() * (m_material->GetShininess() + 2) / (m_material->GetShininess() + 1));
+
+		out = ColoredRay(point, localToWorld * localRay, in.GetColor() * m_material->GetSpecular() / (m_material->GetSpecular().MeanRGB() + 0.00001f) * (m_material->GetShininess() + 2) / (m_material->GetShininess() + 1));
 
 		return true;
 	}
 	else if (random < (m_material->GetDiffuse(point).MeanRGB() + m_material->GetSpecular().MeanRGB() + m_material->GetReflectance().MeanRGB() + m_material->GetTransmittance().MeanRGB()))
 	{
 		PhotonRay refractedray = Refract(in, point, GetVisibleNormal(point, in));
-		out = ColoredRay(point, refractedray.GetDirection(), in.GetColor() * m_material->GetTransmittance() / m_material->GetTransmittance().MeanRGB());
+
+		out = ColoredRay(point, refractedray.GetDirection(), in.GetColor() * m_material->GetTransmittance() / (m_material->GetTransmittance().MeanRGB() + 0.00001f));
 
 		return true;
 	}

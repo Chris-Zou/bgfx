@@ -50,34 +50,51 @@ Image* Scene::Render() const
 
 Image* Scene::RenderMultiThread() const
 {
+	const unsigned int MAX_CORES = thread::hardware_concurrency();
 	Image *img = new Image(m_camera->GetWidth(), m_camera->GetHeight());
 
-	printProgressBar(0, 1);
+	vector<vector<int> > linesPerThreads(MAX_CORES);
 
-	RenderPixelRange(img);
+	for (int i = 0; i < m_camera->GetHeight(); ++i)
+	{
+		linesPerThreads[i % MAX_CORES].push_back(i);
+	}
 
-	printProgressBar(1, 1);
+	vector<thread> threads(MAX_CORES);
+	for (unsigned int i = 0; i < MAX_CORES; ++i)
+	{
+		threads[i] = thread(&Scene::RenderPixelRange, this, img, linesPerThreads[i]);
+	}
+
+	for (unsigned int i = 0; i < MAX_CORES; ++i)
+	{
+		threads[i].join();
+	}
+
+	//RenderPixelRange(img);
+
 
 	return img;
 }
 
-void Scene::RenderPixelRange(Image* img) const
+void Scene::RenderPixelRange(Image* img, const vector<int>& lines) const
 {
 	const Vector firstPixel = m_camera->GetFirstPixel();
 	Vector advanceX(m_camera->GetRight() * m_camera->GetPixelSize());
 	Vector advanceY(m_camera->GetUp() * m_camera->GetPixelSize());
 
 	Vector currentPixel;
-	for (int i = 0; i < m_camera->GetHeight(); ++i)
+	for (int i = 0; i < lines.size(); ++i)
 	{
-		currentPixel = firstPixel - advanceY * (float)i;
+		int currentLine = lines[i];
+		currentPixel = firstPixel - advanceY * (float)currentLine;
 		for (int j = 0; j < m_camera->GetWidth(); ++j)
 		{
 			currentPixel += advanceX;
-			(*img)[i][j] = GetLightRayColor(PhotonRay(m_camera->GetFocalPoint(), currentPixel), m_specularSteps);
+			(*img)[currentLine][j] = GetLightRayColor(PhotonRay(m_camera->GetFocalPoint(), currentPixel), m_specularSteps);
 		}
 
-		printProgressBar(i, (int)m_camera->GetHeight());
+		//printProgressBar(i, (int)m_camera->GetHeight());
 	}
 }
 
@@ -95,6 +112,12 @@ void Scene::EmitPhotons()
 				tie(inclination, azimuth) = UniformSphereSampling();
 				Vector localRay(sin(inclination) * cos(azimuth), sin(inclination) * cos(azimuth), cos(inclination));
 				ColoredRay lightRay(pointLight, fromLocalToGlobal * localRay, light->GetBaseColor() / (float)m_photonEmitted / float(light->GetLights().size()) * 4.0f * PI);
+
+				Color tmpColor = light->GetBaseColor() / (float)m_photonEmitted / float(light->GetLights().size()) * 4.0f * PI;
+				if (tmpColor.Isnan())
+				{
+					std::cout << "Photon::Flux is nan" << std::endl;
+				}
 				PhotonInteraction(lightRay, false);
 			}
 		}
@@ -127,6 +150,10 @@ void Scene::GeometryInteraction(const ColoredRay& lightRay, const Shape* shape, 
 
 	if (save)
 	{
+		if ((lightRay.GetColor() * cosine).Isnan())
+		{
+			std::cout << "Photon::Flux is nan" << std::endl;
+		}
 		m_diffusePhotonMap.Store(intersection, Photon(in));
 	}
 
@@ -156,6 +183,63 @@ Color Scene::GetLightRayColor(const PhotonRay& lightRay, const int specularSteps
 	Color emittedLight = nearestShape->GetEmittedLight();
 
 	return (DirectLight(intersection, normal, lightRay, *nearestShape) + SpecularLight(intersection, normal, lightRay, *nearestShape, specularSteps) + GeometryEstimateRadiance(intersection, normal, lightRay, *nearestShape) + emittedLight) * PathTransmittance(lightRay, mint);
+}
+
+Color Scene::GetRayDepth(const PhotonRay& lightRay) const
+{
+	float mint = FLT_MAX;
+	Shape* nearestShape = nullptr;
+	for (int i = 0; i < m_shapes.size(); ++i)
+	{
+		m_shapes[i]->Intersect(lightRay, mint, nearestShape, const_cast<Shape*>(m_shapes[i]));
+	}
+
+	if (mint == FLT_MAX)
+		return BLACK;
+
+	return Color(mint, mint, mint);
+}
+
+Image* Scene::RenderSceneDepth() const
+{
+	Image *img = new Image(m_camera->GetWidth(), m_camera->GetHeight());
+
+	const Vector firstPixel = m_camera->GetFirstPixel();
+	Vector advanceX(m_camera->GetRight() * m_camera->GetPixelSize());
+	Vector advanceY(m_camera->GetUp() * m_camera->GetPixelSize());
+
+	Color maxColor(FLT_MIN, FLT_MIN, FLT_MIN);
+
+	Vector currentPixel;
+	for (int i = 0; i < m_camera->GetHeight(); ++i)
+	{
+		int currentLine = i;
+		currentPixel = firstPixel - advanceY * (float)currentLine;
+		for (int j = 0; j < m_camera->GetWidth(); ++j)
+		{
+			currentPixel += advanceX;
+			Color currColor = GetRayDepth(PhotonRay(m_camera->GetFocalPoint(), currentPixel));
+			if (currColor != BLACK)
+			{
+				if (currColor.GetR() > maxColor.GetR())
+				{
+					maxColor = currColor;
+				}
+			}
+			
+			(*img)[currentLine][j] = currColor;
+		}
+	}
+
+	for (int i = 0; i < m_camera->GetHeight(); ++i)
+	{
+		for (int j = 0; j < m_camera->GetWidth(); ++j)
+		{
+			(*img)[i][j] = (*img)[i][j] / maxColor.GetR();
+		}
+	}
+
+	return img;
 }
 
 Color Scene::DirectLight(const Vector& point, const Vector& normal, const PhotonRay& from, const Shape& shape) const
@@ -224,7 +308,30 @@ Color Scene::GeometryEstimateRadiance(const Vector& point, const Vector& normal,
 		float cosine = tmpPhoton.GetIncidence().DotProduct(normal);
 		if (cosine < 0.0f)
 		{
-			ret += tmpPhoton.GetFlux() * shape.GetMaterial()->PhongBRDF(in.GetDirection() * -1.0f, tmpPhoton.GetIncidence(), normal, point) * GaussianKernel(point, (*nodeIt)->GetPoint(), radius);
+			Color flux = tmpPhoton.GetFlux();
+			if (flux.Isnan())
+			{
+				std::cout << "flux is nan" << endl;
+			}
+			Color brdf = shape.GetMaterial()->PhongBRDF(in.GetDirection() * -1.0f, tmpPhoton.GetIncidence(), normal, point);
+			if (brdf.Isnan())
+			{
+				std::cout << "brdf is nan" << endl;
+			}
+
+			float gaussianKernel = GaussianKernel(point, (*nodeIt)->GetPoint(), radius);
+			if (isnan(gaussianKernel))
+			{
+				std::cout << "gaussianKernel is nan" << endl;
+			}
+
+			ret += flux * brdf * gaussianKernel;
+
+			if (ret.Isnan())
+			{
+				std::cout << "ret is nan" << endl;
+			}
+			//ret += tmpPhoton.GetFlux() * shape.GetMaterial()->PhongBRDF(in.GetDirection() * -1.0f, tmpPhoton.GetIncidence(), normal, point) * GaussianKernel(point, (*nodeIt)->GetPoint(), radius);
 		}
 	}
 

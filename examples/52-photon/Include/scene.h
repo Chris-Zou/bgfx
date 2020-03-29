@@ -53,12 +53,14 @@ public:
 	Image * Render() const;
 	Image* RenderMultiThread() const;
 	void EmitPhotons();
+	Image* RenderSceneDepth() const;
 
 private:
-	void RenderPixelRange(Image* image) const;
+	void RenderPixelRange(Image* image, const vector<int>& lines) const;
 	void PhotonInteraction(const ColoredRay& lightRay, const bool save);
 	void GeometryInteraction(const ColoredRay& lightRay, const Shape* shape, const Vector& intersection, bool save);
 	Color GetLightRayColor(const PhotonRay& lightRay, const int specularSteps) const;
+	Color GetRayDepth(const PhotonRay& lightRay) const;
 	Color DirectLight(const Vector& point, const Vector& normal, const PhotonRay& from, const Shape& shape) const;
 	Color SpecularLight(const Vector& point, const Vector& normal, const PhotonRay& in, const Shape& shape, const int specularSteps) const;
 	Color GeometryEstimateRadiance(const Vector& point, const Vector& normal, const PhotonRay& in, const Shape& shape) const;

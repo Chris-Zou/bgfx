@@ -88,6 +88,7 @@ namespace PhotonMapping
 			m_cornellBox.EmitPhotons();
 
 			m_image = m_cornellBox.RenderMultiThread();
+			//m_image = m_cornellBox.RenderSceneDepth();
 			if(m_image != nullptr)
 				m_image->SaveBMP("corrnelBox.bmp");
 		}
