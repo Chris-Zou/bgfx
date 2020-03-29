@@ -73,7 +73,7 @@ bool Shape::RussianRoulette(const ColoredRay& in, const Vector& point, ColoredRa
 		return true;
 	}
 
-	return true;
+	return false;
 }
 
 Vector Shape::GetVisibleNormal(const Vector& point, const PhotonRay& from) const
