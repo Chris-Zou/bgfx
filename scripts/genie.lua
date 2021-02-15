@@ -518,6 +518,7 @@ or _OPTIONS["with-combined-examples"] then
 		, "50-parallax"
 		, "51-adaptive-ssao"
 		, "52-photon"
+		, "53-prt"
 		)
 
 	-- C99 source doesn't compile under WinRT settings
