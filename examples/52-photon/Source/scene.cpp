@@ -183,6 +183,11 @@ Color Scene::GetLightRayColor(const PhotonRay& lightRay, const int specularSteps
 	Color emittedLight = nearestShape->GetEmittedLight();
 
 	return (DirectLight(intersection, normal, lightRay, *nearestShape) + SpecularLight(intersection, normal, lightRay, *nearestShape, specularSteps) + GeometryEstimateRadiance(intersection, normal, lightRay, *nearestShape) + emittedLight) * PathTransmittance(lightRay, mint);
+
+	//Vector n = normal.Normalize();
+	//n = n * 0.5f + Vector(0.5f, 0.5f, 0.5f);
+
+	//return Color(n.GetX(), n.GetY(), n.GetZ());
 }
 
 Color Scene::GetRayDepth(const PhotonRay& lightRay) const

@@ -55,7 +55,7 @@ bool PhotonSphere::IsInside(const Vector& point) const
 
 Vector PhotonSphere::GetNormal(const Vector& point) const
 {
-	return (m_center - point) / m_radius;
+	return (point - m_center) / m_radius;
 }
 float PhotonSphere::Area(const float radius)
 {

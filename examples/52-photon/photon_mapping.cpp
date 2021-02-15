@@ -58,7 +58,7 @@ namespace PhotonMapping
 
 			bgfx::setDebug(m_debug);
 
-			m_cornellBox.SetCamera(new Pinhole(Vector(0, 1, 0), Vector(1, 0, 0), Vector(0, 0, 1), Vector(0, 0.25f, -1.7f), PI / 4, 1.0, 1920, 1080));
+			m_cornellBox.SetCamera(new Pinhole(Vector(0, 1, 0), Vector(1, 0, 0), Vector(0, 0, 1), Vector(0, 0.25f, -1.7f), PI / 4, 1.0, _width, _height));
 
 			Plane leftWall(Vector(-1, 0, 0), Vector(1, 0, 0));
 			leftWall.SetMaterial(new Material(RED, BLACK, BLACK, BLACK, 0.0f));
@@ -84,11 +84,12 @@ namespace PhotonMapping
 
 			m_cornellBox.SetEmitedPhotons(100000);
 			m_cornellBox.SetKNearestNeighbours(300);
+			m_cornellBox.SetSpecularSteps(1);
 
 			m_cornellBox.EmitPhotons();
 
-			//m_image = m_cornellBox.RenderMultiThread();
-			m_image = m_cornellBox.RenderSceneDepth();
+			m_image = m_cornellBox.RenderMultiThread();
+			//m_image = m_cornellBox.RenderSceneDepth();
 			if(m_image != nullptr)
 				m_image->SaveBMP("corrnelBox.bmp");
 		}
